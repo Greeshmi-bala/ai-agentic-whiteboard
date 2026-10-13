@@ -1,16 +1,22 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import "./globals.css";
 import type { Metadata } from "next";
-import Provider from "./provider";
 import { Inter } from "next/font/google";
-import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+import "./globals.css";
+
+import Provider from "./provider";
+import { cn } from "@/lib/utils";
+import { Toaster } from "sonner";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
-  title: "Next.js Premium Startup Boilerplate",
+  title: "WhizBoard",
   description:
-    "Created using the ultimate interactive Next.js stack generator CLI.",
+    "Turn your ideas into diagrams, notes, and visuals on an infinite canvas.",
 };
 
 const isClerkConfigured =
@@ -22,23 +28,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  if (!isClerkConfigured) {
-    return (
-      <html lang="en" className={cn("font-sans", inter.variable)}>
-        <body style={{ margin: 0, padding: 0 }}>
-          {children}
-        </body>
-      </html>
-    );
-  }
-
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body style={{ margin: 0, padding: 0 }}>
-          <Provider>{children}</Provider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={cn("font-sans", inter.variable)}>
+      <body className="m-0 min-h-screen p-0">
+        {isClerkConfigured ? (
+          <ClerkProvider>
+            <Provider>{children}</Provider>
+          </ClerkProvider>
+        ) : (
+          children
+        )}
+
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          duration={3000}
+          expand={false}
+        />
+      </body>
+    </html>
   );
 }

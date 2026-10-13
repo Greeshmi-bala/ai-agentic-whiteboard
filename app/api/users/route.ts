@@ -1,58 +1,109 @@
 import { db, users } from "@/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+// ==========================================
+// POST: CREATE OR FETCH USER
+// ==========================================
+
 export async function POST() {
   try {
-    // Get the currently authenticated Clerk user
-    const user = await currentUser();
+    // Verify authentication.
+    const { userId } = await auth();
 
-    // Check whether the user is authenticated
-    if (!user) {
+    if (!userId) {
       return NextResponse.json(
-        { message: "User not found. Please sign in." },
+        {
+          message: "User not found. Please sign in.",
+        },
         { status: 401 }
       );
     }
 
-    // Get the user's primary email address
+    // Retrieve the authenticated Clerk user.
+    const user = await currentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          message: "Unable to retrieve your account.",
+        },
+        { status: 401 }
+      );
+    }
+
+    // Get the primary email address.
     const email = user.primaryEmailAddress?.emailAddress;
 
     if (!email) {
       return NextResponse.json(
-        { message: "User email address not found." },
+        {
+          message: "User email address not found.",
+        },
         { status: 400 }
       );
     }
 
-    // Check whether the user already exists in the database
-    const userData = await db
+    // Check whether the user already exists.
+    const existingUsers = await db
       .select()
       .from(users)
-      .where(eq(users.email, email));
+      .where(eq(users.email, email))
+      .limit(1);
 
-    // Return the existing user if found
-    if (userData.length > 0) {
-      return NextResponse.json(userData[0]);
+    if (existingUsers.length > 0) {
+      return NextResponse.json(existingUsers[0], {
+        status: 200,
+      });
     }
 
-    // Create a new user if they do not exist
+    // Insert the new user.
+    // onConflictDoNothing protects against duplicate-email inserts
+    // if multiple requests arrive at the same time.
     const result = await db
       .insert(users)
       .values({
-        name: user.fullName,
-        email: email,
+        name: user.fullName || user.firstName || "User",
+        email,
+      })
+      .onConflictDoNothing({
+        target: users.email,
       })
       .returning();
 
-    // Return the newly created user
-    return NextResponse.json(result[0], { status: 201 });
+    if (result.length > 0) {
+      return NextResponse.json(result[0], {
+        status: 201,
+      });
+    }
+
+    // Another request may have created the user concurrently.
+    const concurrentUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (concurrentUser.length > 0) {
+      return NextResponse.json(concurrentUser[0], {
+        status: 200,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        message: "Unable to create or retrieve the user.",
+      },
+      { status: 500 }
+    );
   } catch (error) {
     console.error("Error in POST /api/users:", error);
 
     return NextResponse.json(
-      { message: "Internal server error while processing the user." },
+      {
+        message: "Internal server error while processing the user.",
+      },
       { status: 500 }
     );
   }
