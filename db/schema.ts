@@ -16,9 +16,12 @@ export const users = pgTable("users", {
 
   name: text("name"),
 
-  email: text("email").notNull().unique(),
+  email: text("email")
+    .notNull()
+    .unique(),
 
-  credits: integer("credits").default(3),
+  credits: integer("credits")
+    .default(3),
 
   createdAt: timestamp("created_at")
     .defaultNow()
@@ -32,33 +35,38 @@ export const users = pgTable("users", {
 export const boards = pgTable("boards", {
   id: serial("id").primaryKey(),
 
+  // Unique identifier for each workspace.
   projectId: varchar("project_id", {
     length: 255,
   })
     .notNull()
     .unique(),
 
+  // Workspace name.
   projectName: varchar("project_name", {
     length: 255,
   }).notNull(),
 
+  // Optional workspace description.
   description: text("description"),
 
+  // Email of the workspace owner.
   userEmail: varchar("user_email", {
     length: 255,
   }).notNull(),
 
-  // Whiteboard drawing data stored as JSON text.
+  // Excalidraw scene stored as JSON text.
+  // Includes elements, app state, and image file data.
   whiteboardContent: text("whiteboard_content")
     .notNull()
     .default("[]"),
 
-  // Document editor content stored as text.
+  // Existing document editor content.
   documentContent: text("document_content")
     .notNull()
     .default(""),
 
-  // Board creation timestamp.
+  // Workspace creation timestamp.
   createdAt: timestamp("created_at")
     .defaultNow()
     .notNull(),

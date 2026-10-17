@@ -1,34 +1,29 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db, boards } from "@/db";
 
+// ==================================================
+// TYPES
+// ==================================================
+
 interface RouteContext {
   params: Promise<{
-    projectId: string;
+    projectid: string;
   }>;
 }
 
-// ==========================================
-// HELPER: GET AUTHENTICATED USER EMAIL
-// ==========================================
-
-async function getAuthenticatedEmail(): Promise<string | null> {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return null;
-  }
-
-  const user = await currentUser();
-
-  return user?.primaryEmailAddress?.emailAddress ?? null;
+interface UpdateBoardPayload {
+  projectName?: unknown;
+  description?: unknown;
+  whiteboardContent?: unknown;
+  documentContent?: unknown;
 }
 
-// ==========================================
-// HELPER: JSON ERROR RESPONSE
-// ==========================================
+// ==================================================
+// JSON ERROR
+// ==================================================
 
 function jsonError(message: string, status: number) {
   return NextResponse.json(
@@ -40,48 +35,73 @@ function jsonError(message: string, status: number) {
   );
 }
 
-// ==========================================
-// GET: FETCH A SINGLE BOARD
-// ==========================================
+// ==================================================
+// AUTHENTICATION
+// ==================================================
+
+async function getAuthenticatedEmail() {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return {
+      email: null,
+      error: jsonError("Please sign in to continue.", 401),
+    };
+  }
+
+  const user = await currentUser();
+
+  const email = user?.primaryEmailAddress?.emailAddress;
+
+  if (!email) {
+    return {
+      email: null,
+      error: jsonError("User email address not found.", 400),
+    };
+  }
+
+  return {
+    email,
+    error: null,
+  };
+}
+
+// ==================================================
+// GET: LOAD ONE BOARD
+// ==================================================
 
 export async function GET(
   _request: Request,
   context: RouteContext
 ) {
   try {
-    const email = await getAuthenticatedEmail();
+    const authResult = await getAuthenticatedEmail();
 
-    if (!email) {
-      return jsonError(
-        "Please sign in to access this workspace.",
-        401
-      );
+    if (!authResult.email) {
+      return authResult.error!;
     }
 
-    const { projectId } = await context.params;
+    const { projectid } = await context.params;
 
-    if (!projectId || projectId === "undefined") {
-      return jsonError(
-        "A valid project ID is required.",
-        400
-      );
+    if (!projectid) {
+      return jsonError("Project ID is required.", 400);
     }
 
     const [board] = await db
       .select()
       .from(boards)
-      .where(eq(boards.projectId, projectId))
+      .where(
+        and(
+          eq(boards.projectId, projectid),
+          eq(boards.userEmail, authResult.email)
+        )
+      )
       .limit(1);
 
     if (!board) {
-      return jsonError("Workspace not found.", 404);
-    }
-
-    // Users may access only their own boards.
-    if (board.userEmail !== email) {
       return jsonError(
-        "You do not have permission to access this workspace.",
-        403
+        "Workspace not found or you do not have access.",
+        404
       );
     }
 
@@ -90,195 +110,166 @@ export async function GET(
         success: true,
         board: {
           ...board,
-          // Fallbacks also support older records.
-          whiteboardContent:
-            board.whiteboardContent ?? "[]",
-          documentContent:
-            board.documentContent ?? "",
+          whiteboardContent: board.whiteboardContent || "[]",
+          documentContent: board.documentContent || "",
         },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("GET /api/boards/[projectId] failed:", error);
+    console.error("GET /api/boards/[projectid] failed:", error);
 
-    return jsonError(
-      "Failed to load the workspace. Check the server logs.",
-      500
-    );
+    return jsonError("Failed to load workspace.", 500);
   }
 }
 
-// ==========================================
-// PATCH: UPDATE A BOARD
-// ==========================================
+// ==================================================
+// PATCH: SAVE BOARD CHANGES
+// ==================================================
 
 export async function PATCH(
   request: Request,
   context: RouteContext
 ) {
   try {
-    const email = await getAuthenticatedEmail();
+    const authResult = await getAuthenticatedEmail();
 
-    if (!email) {
-      return jsonError(
-        "Please sign in to save this workspace.",
-        401
-      );
+    if (!authResult.email) {
+      return authResult.error!;
     }
 
-    const { projectId } = await context.params;
+    const { projectid } = await context.params;
 
-    if (!projectId || projectId === "undefined") {
-      return jsonError(
-        "A valid project ID is required.",
-        400
-      );
+    if (!projectid) {
+      return jsonError("Project ID is required.", 400);
     }
 
-    // Find the existing board.
-    const [existingBoard] = await db
-      .select()
-      .from(boards)
-      .where(eq(boards.projectId, projectId))
-      .limit(1);
-
-    if (!existingBoard) {
-      return jsonError("Workspace not found.", 404);
-    }
-
-    // Prevent updating another user's board.
-    if (existingBoard.userEmail !== email) {
-      return jsonError(
-        "You do not have permission to update this workspace.",
-        403
-      );
-    }
-
-    // Parse request body safely.
-    let body: unknown;
+    let body: UpdateBoardPayload;
 
     try {
-      body = await request.json();
+      body = (await request.json()) as UpdateBoardPayload;
     } catch {
-      return jsonError(
-        "The request body must contain valid JSON.",
-        400
-      );
+      return jsonError("Invalid JSON request body.", 400);
     }
-
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      Array.isArray(body)
-    ) {
-      return jsonError(
-        "Invalid workspace update data.",
-        400
-      );
-    }
-
-    const payload = body as Record<string, unknown>;
 
     const updates: {
       projectName?: string;
+      description?: string | null;
       whiteboardContent?: string;
       documentContent?: string;
-      updatedAt: Date;
-    } = {
-      updatedAt: new Date(),
-    };
+      updatedAt?: Date;
+    } = {};
 
-    // Validate board name when supplied.
-    if (payload.projectName !== undefined) {
-      if (typeof payload.projectName !== "string") {
-        return jsonError(
-          "Board name must be a string.",
-          400
-        );
+    if (body.projectName !== undefined) {
+      if (
+        typeof body.projectName !== "string" ||
+        !body.projectName.trim()
+      ) {
+        return jsonError("Board name cannot be empty.", 400);
       }
 
-      const projectName = payload.projectName.trim();
-
-      if (!projectName) {
-        return jsonError(
-          "Board name cannot be empty.",
-          400
-        );
-      }
-
-      if (projectName.length > 255) {
+      if (body.projectName.trim().length > 255) {
         return jsonError(
           "Board name cannot exceed 255 characters.",
           400
         );
       }
 
-      updates.projectName = projectName;
+      updates.projectName = body.projectName.trim();
     }
 
-    // Validate whiteboard content.
-    if (payload.whiteboardContent !== undefined) {
-      if (
-        typeof payload.whiteboardContent !== "string"
-      ) {
+    if (body.description !== undefined) {
+      if (typeof body.description !== "string") {
+        return jsonError("Invalid board description.", 400);
+      }
+
+      if (body.description.length > 500) {
         return jsonError(
-          "Whiteboard content must be a string.",
+          "Description cannot exceed 500 characters.",
           400
         );
       }
 
-      if (payload.whiteboardContent.length > 5_000_000) {
+      updates.description = body.description.trim() || null;
+    }
+
+    if (body.whiteboardContent !== undefined) {
+      if (typeof body.whiteboardContent !== "string") {
+        return jsonError("Invalid whiteboard content.", 400);
+      }
+
+      if (body.whiteboardContent.length > 5_000_000) {
         return jsonError(
-          "Whiteboard content is too large.",
+          "Whiteboard content is too large to save.",
           413
         );
       }
 
-      // Ensure the saved whiteboard content is valid JSON.
       try {
-        JSON.parse(payload.whiteboardContent);
+        const parsed: unknown = JSON.parse(
+          body.whiteboardContent
+        );
+
+        if (
+          !Array.isArray(parsed) &&
+          (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            !("elements" in parsed) ||
+            !Array.isArray(parsed.elements)
+          )
+        ) {
+          return jsonError(
+            "Whiteboard data must contain an elements array.",
+            400
+          );
+        }
       } catch {
         return jsonError(
-          "Whiteboard content contains invalid JSON.",
+          "Whiteboard content must be valid JSON.",
           400
         );
       }
 
-      updates.whiteboardContent =
-        payload.whiteboardContent;
+      updates.whiteboardContent = body.whiteboardContent;
     }
 
-    // Validate document content.
-    if (payload.documentContent !== undefined) {
-      if (typeof payload.documentContent !== "string") {
-        return jsonError(
-          "Document content must be a string.",
-          400
-        );
+    if (body.documentContent !== undefined) {
+      if (typeof body.documentContent !== "string") {
+        return jsonError("Invalid document content.", 400);
       }
 
-      if (payload.documentContent.length > 1_000_000) {
+      if (body.documentContent.length > 1_000_000) {
         return jsonError(
-          "Document content is too large.",
+          "Document content is too large to save.",
           413
         );
       }
 
-      updates.documentContent = payload.documentContent;
+      updates.documentContent = body.documentContent;
     }
 
-    // Save changes in PostgreSQL.
+    if (Object.keys(updates).length === 0) {
+      return jsonError("No changes were provided.", 400);
+    }
+
+    updates.updatedAt = new Date();
+
     const [updatedBoard] = await db
       .update(boards)
       .set(updates)
-      .where(eq(boards.projectId, projectId))
+      .where(
+        and(
+          eq(boards.projectId, projectid),
+          eq(boards.userEmail, authResult.email)
+        )
+      )
       .returning();
 
     if (!updatedBoard) {
       return jsonError(
-        "The workspace could not be updated.",
-        500
+        "Workspace not found or you do not have access.",
+        404
       );
     }
 
@@ -291,14 +282,8 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
-    console.error(
-      "PATCH /api/boards/[projectId] failed:",
-      error
-    );
+    console.error("PATCH /api/boards/[projectid] failed:", error);
 
-    return jsonError(
-      "Failed to save the workspace. Check the server logs.",
-      500
-    );
+    return jsonError("Failed to save workspace.", 500);
   }
 }

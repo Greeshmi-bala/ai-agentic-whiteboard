@@ -1,442 +1,633 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
+import type {
+  ExcalidrawInitialDataState,
+  ExcalidrawImperativeAPI,
+} from "@excalidraw/excalidraw/types";
+
+import type {
+  ComponentType,
+  CSSProperties,
+  KeyboardEvent,
+} from "react";
+
 import {
+  MousePointer2,
+  Hand,
+  Square,
+  Diamond,
+  Circle,
+  ArrowRight,
+  Minus,
   Pencil,
+  Type,
+  Image as ImageIcon,
   Eraser,
-  Undo2,
   Trash2,
 } from "lucide-react";
+
+import "@excalidraw/excalidraw/index.css";
+import "./whiteboard.css";
+
+// ==================================================
+// TYPES
+// ==================================================
 
 interface WhiteBoardProps {
   initialContent: string;
   onChange: (content: string) => void;
 }
 
-interface Point {
-  x: number;
-  y: number;
+interface ExcalidrawScene {
+  type: "excalidraw";
+  version: number;
+  source: string;
+  elements: readonly unknown[];
+  appState: {
+    viewBackgroundColor: string;
+    gridSize: number | null;
+  };
+  files: Record<string, unknown>;
 }
 
-interface Stroke {
+type WhiteboardTool =
+  | "selection"
+  | "hand"
+  | "rectangle"
+  | "diamond"
+  | "ellipse"
+  | "arrow"
+  | "line"
+  | "freedraw"
+  | "text"
+  | "image"
+  | "eraser";
+
+type ToolbarAction = WhiteboardTool | "delete";
+
+interface ToolbarTool {
+  id: ToolbarAction;
+  label: string;
+  shortcut?: string;
+  icon: ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+  }>;
   color: string;
-  width: number;
-  points: Point[];
 }
 
-const COLORS = [
-  "#111827",
-  "#2563eb",
-  "#7c3aed",
-  "#dc2626",
-  "#059669",
-  "#f59e0b",
+// ==================================================
+// TOOLBAR CONFIGURATION
+// ==================================================
+
+const TOOLBAR_TOOLS: ToolbarTool[] = [
+  {
+    id: "selection",
+    label: "Select and Move",
+    shortcut: "1",
+    icon: MousePointer2,
+    color: "#8B5CF6",
+  },
+  {
+    id: "hand",
+    label: "Move Individual Shapes",
+    shortcut: "H",
+    icon: Hand,
+    color: "#06B6D4",
+  },
+  {
+    id: "rectangle",
+    label: "Rectangle",
+    shortcut: "R",
+    icon: Square,
+    color: "#3B82F6",
+  },
+  {
+    id: "diamond",
+    label: "Diamond",
+    shortcut: "D",
+    icon: Diamond,
+    color: "#10B981",
+  },
+  {
+    id: "ellipse",
+    label: "Circle / Ellipse",
+    shortcut: "O",
+    icon: Circle,
+    color: "#F59E0B",
+  },
+  {
+    id: "arrow",
+    label: "Arrow",
+    shortcut: "A",
+    icon: ArrowRight,
+    color: "#8B5CF6",
+  },
+  {
+    id: "line",
+    label: "Line",
+    shortcut: "L",
+    icon: Minus,
+    color: "#EC4899",
+  },
+  {
+    id: "freedraw",
+    label: "Freehand Draw",
+    shortcut: "P",
+    icon: Pencil,
+    color: "#F97316",
+  },
+  {
+    id: "text",
+    label: "Text",
+    shortcut: "T",
+    icon: Type,
+    color: "#6366F1",
+  },
+  {
+    id: "image",
+    label: "Insert Image",
+    icon: ImageIcon,
+    color: "#22C55E",
+  },
+  {
+    id: "eraser",
+    label: "Eraser",
+    shortcut: "E",
+    icon: Eraser,
+    color: "#F43F5E",
+  },
+  {
+    id: "delete",
+    label: "Delete Selected",
+    shortcut: "Delete",
+    icon: Trash2,
+    color: "#DC2626",
+  },
 ];
 
-const INITIAL_CONTENT_KEY = Symbol("initial-content");
+// ==================================================
+// DEFAULT SCENE
+// ==================================================
 
-export default function WhiteBoard({
-  initialContent,
-  onChange,
-}: WhiteBoardProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const strokesRef = useRef<Stroke[]>([]);
-  const currentStrokeRef = useRef<Stroke | null>(null);
-
-  const isDrawingRef = useRef(false);
-  const initializedRef = useRef(false);
-
-  const [color, setColor] = useState("#111827");
-  const [brushSize, setBrushSize] = useState(3);
-  const [isEraser, setIsEraser] = useState(false);
-
-  // ==========================================
-  // DRAW STROKES
-  // ==========================================
-
-  const drawStroke = useCallback(
-    (
-      context: CanvasRenderingContext2D,
-      stroke: Stroke,
-      width: number,
-      height: number
-    ) => {
-      if (stroke.points.length === 0) return;
-
-      context.strokeStyle = stroke.color;
-      context.lineWidth = stroke.width;
-      context.lineCap = "round";
-      context.lineJoin = "round";
-
-      context.beginPath();
-
-      context.moveTo(
-        stroke.points[0].x * width,
-        stroke.points[0].y * height
-      );
-
-      if (stroke.points.length === 1) {
-        context.lineTo(
-          stroke.points[0].x * width + 0.1,
-          stroke.points[0].y * height + 0.1
-        );
-      } else {
-        for (let index = 1; index < stroke.points.length; index++) {
-          const point = stroke.points[index];
-
-          context.lineTo(
-            point.x * width,
-            point.y * height
-          );
-        }
-      }
-
-      context.stroke();
+function getDefaultScene(): ExcalidrawInitialDataState {
+  return {
+    elements: [],
+    appState: {
+      viewBackgroundColor: "#ffffff",
     },
-    []
-  );
+  };
+}
 
-  const redraw = useCallback(() => {
-    const canvas = canvasRef.current;
+// ==================================================
+// PARSE SAVED SCENE
+// ==================================================
 
-    if (!canvas) return;
+function parseInitialContent(
+  content: string
+): ExcalidrawInitialDataState {
+  if (!content || content === "[]") {
+    return getDefaultScene();
+  }
 
-    const context = canvas.getContext("2d");
+  try {
+    const parsed: unknown = JSON.parse(content);
 
-    if (!context) return;
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return getDefaultScene();
+    }
 
-    const rect = canvas.getBoundingClientRect();
-    const pixelRatio = window.devicePixelRatio || 1;
+    if (
+      !("elements" in parsed) ||
+      !Array.isArray(parsed.elements)
+    ) {
+      return getDefaultScene();
+    }
 
-    context.setTransform(
-      pixelRatio,
-      0,
-      0,
-      pixelRatio,
-      0,
-      0
+    return parsed as ExcalidrawInitialDataState;
+  } catch (error) {
+    console.error(
+      "Unable to parse saved Excalidraw scene:",
+      error
     );
 
-    context.clearRect(0, 0, rect.width, rect.height);
+    return getDefaultScene();
+  }
+}
 
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, rect.width, rect.height);
+// ==================================================
+// EXCALIDRAW EDITOR
+// ==================================================
 
-    for (const stroke of strokesRef.current) {
-      drawStroke(
-        context,
-        stroke,
-        rect.width,
-        rect.height
-      );
-    }
+const ExcalidrawEditor = dynamic(
+  async () => {
+    const { Excalidraw } = await import(
+      "@excalidraw/excalidraw"
+    );
 
-    if (currentStrokeRef.current) {
-      drawStroke(
-        context,
-        currentStrokeRef.current,
-        rect.width,
-        rect.height
-      );
-    }
-  }, [drawStroke]);
+    function Editor({
+      initialContent,
+      onChange,
+    }: WhiteBoardProps) {
+      // ----------------------------------------------
+      // INITIAL SCENE
+      // ----------------------------------------------
 
-  // ==========================================
-  // INITIALIZE SAVED CONTENT
-  // ==========================================
-
-  useEffect(() => {
-    if (initializedRef.current) return;
-
-    try {
-      const parsed = JSON.parse(initialContent || "[]");
-
-      if (Array.isArray(parsed)) {
-        strokesRef.current = parsed.filter(
-          (stroke): stroke is Stroke =>
-            stroke &&
-            typeof stroke.color === "string" &&
-            typeof stroke.width === "number" &&
-            Array.isArray(stroke.points)
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Unable to load saved whiteboard content:",
-        error
+      const initialData = useMemo(
+        () => parseInitialContent(initialContent),
+        [initialContent]
       );
 
-      strokesRef.current = [];
-    }
+      // ----------------------------------------------
+      // EXCALIDRAW API
+      // ----------------------------------------------
 
-    initializedRef.current = true;
-    redraw();
-  }, [initialContent, redraw]);
+      /*
+       * Store the API in a ref instead of React state.
+       *
+       * Excalidraw can invoke excalidrawAPI during its
+       * initialization/update lifecycle. Updating state
+       * synchronously from that callback can cause the
+       * React render-phase update error.
+       */
 
-  // ==========================================
-  // RESIZE CANVAS
-  // ==========================================
+      const excalidrawAPIRef =
+        useRef<ExcalidrawImperativeAPI | null>(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
+      const [isAPIReady, setIsAPIReady] =
+        useState(false);
 
-    if (!canvas) return;
+      const readyFrameRef = useRef<number | null>(null);
 
-    const resizeCanvas = () => {
-      const rect = canvas.getBoundingClientRect();
-      const pixelRatio = window.devicePixelRatio || 1;
+      const [activeTool, setActiveTool] =
+        useState<WhiteboardTool>("selection");
 
-      canvas.width = Math.max(
-        1,
-        Math.round(rect.width * pixelRatio)
+      // ----------------------------------------------
+      // CLEANUP
+      // ----------------------------------------------
+
+      useEffect(() => {
+        return () => {
+          if (readyFrameRef.current !== null) {
+            window.cancelAnimationFrame(
+              readyFrameRef.current
+            );
+          }
+        };
+      }, []);
+
+      // ----------------------------------------------
+      // INITIALIZE API SAFELY
+      // ----------------------------------------------
+
+      const handleExcalidrawAPI = useCallback(
+        (api: ExcalidrawImperativeAPI) => {
+          excalidrawAPIRef.current = api;
+
+          /*
+           * Defer the React state update until the next
+           * animation frame, outside the API callback.
+           */
+
+          if (readyFrameRef.current !== null) {
+            window.cancelAnimationFrame(
+              readyFrameRef.current
+            );
+          }
+
+          readyFrameRef.current =
+            window.requestAnimationFrame(() => {
+              setIsAPIReady(true);
+              readyFrameRef.current = null;
+            });
+        },
+        []
       );
 
-      canvas.height = Math.max(
-        1,
-        Math.round(rect.height * pixelRatio)
+      // ----------------------------------------------
+      // ACTIVATE TOOL
+      // ----------------------------------------------
+
+      const handleToolChange = useCallback(
+        (tool: WhiteboardTool) => {
+          const api = excalidrawAPIRef.current;
+
+          if (!api) {
+            return;
+          }
+
+          /*
+           * The custom Hand button intentionally activates
+           * selection mode so individual shapes can be moved.
+           *
+           * The actual Excalidraw hand tool pans the canvas.
+           */
+
+          const actualTool =
+            tool === "hand" ? "selection" : tool;
+
+          try {
+            api.setActiveTool({
+              type: actualTool,
+            });
+
+            setActiveTool(tool);
+          } catch (error) {
+            console.error(
+              `Unable to activate ${tool}:`,
+              error
+            );
+          }
+        },
+        []
       );
 
-      redraw();
-    };
+      // ----------------------------------------------
+      // DELETE SELECTED ELEMENTS
+      // ----------------------------------------------
 
-    resizeCanvas();
+      const handleDeleteSelected = useCallback(() => {
+        const api = excalidrawAPIRef.current;
 
-    const observer = new ResizeObserver(resizeCanvas);
+        if (!api) {
+          return;
+        }
 
-    observer.observe(canvas);
+        try {
+          const appState = api.getAppState();
 
-    return () => observer.disconnect();
-  }, [redraw]);
+          const selectedIds =
+            appState.selectedElementIds;
 
-  // ==========================================
-  // POINTER COORDINATES
-  // ==========================================
+          const hasSelection = Object.values(
+            selectedIds
+          ).some(Boolean);
 
-  const getPoint = (
-    event: React.PointerEvent<HTMLCanvasElement>
-  ): Point => {
-    const rect = event.currentTarget.getBoundingClientRect();
+          if (!hasSelection) {
+            return;
+          }
 
-    return {
-      x: Math.max(
-        0,
-        Math.min(1, (event.clientX - rect.left) / rect.width)
-      ),
-      y: Math.max(
-        0,
-        Math.min(1, (event.clientY - rect.top) / rect.height)
-      ),
-    };
-  };
+          const elements = api.getSceneElements();
 
-  // ==========================================
-  // START DRAWING
-  // ==========================================
+          /*
+           * Remove selected elements only.
+           * Leave all unselected elements untouched.
+           */
 
-  const startDrawing = (
-    event: React.PointerEvent<HTMLCanvasElement>
-  ) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
+          const remainingElements = elements.filter(
+            (element) => !selectedIds[element.id]
+          );
 
-    isDrawingRef.current = true;
+          api.updateScene({
+            elements: remainingElements,
+          });
 
-    currentStrokeRef.current = {
-      color: isEraser ? "#ffffff" : color,
-      width: isEraser ? brushSize * 5 : brushSize,
-      points: [getPoint(event)],
-    };
+          // Return to selection mode.
+          api.setActiveTool({
+            type: "selection",
+          });
 
-    redraw();
-  };
+          setActiveTool("selection");
+        } catch (error) {
+          console.error(
+            "Unable to delete selected elements:",
+            error
+          );
+        }
+      }, []);
 
-  // ==========================================
-  // DRAW
-  // ==========================================
+      // ----------------------------------------------
+      // TOOLBAR ACTION HANDLER
+      // ----------------------------------------------
 
-  const draw = (
-    event: React.PointerEvent<HTMLCanvasElement>
-  ) => {
-    if (
-      !isDrawingRef.current ||
-      !currentStrokeRef.current
-    ) {
-      return;
-    }
+      const handleToolbarAction = useCallback(
+        (action: ToolbarAction) => {
+          if (action === "delete") {
+            handleDeleteSelected();
+            return;
+          }
 
-    currentStrokeRef.current.points.push(getPoint(event));
+          handleToolChange(action);
+        },
+        [
+          handleDeleteSelected,
+          handleToolChange,
+        ]
+      );
 
-    redraw();
-  };
+      // ----------------------------------------------
+      // SCENE CHANGE / AUTOSAVE
+      // ----------------------------------------------
 
-  // ==========================================
-  // FINISH DRAWING
-  // ==========================================
+      const handleChange = useCallback(
+        (
+          elements: readonly unknown[],
+          appState: {
+            viewBackgroundColor?: string;
+            gridSize?: number | null;
+          },
+          files: Record<string, unknown>
+        ) => {
+          const scene: ExcalidrawScene = {
+            type: "excalidraw",
+            version: 2,
+            source: "ai-agentic-whiteboard",
+            elements,
+            appState: {
+              viewBackgroundColor:
+                appState.viewBackgroundColor ??
+                "#ffffff",
 
-  const stopDrawing = () => {
-    if (!isDrawingRef.current) return;
+              gridSize:
+                appState.gridSize ?? null,
+            },
+            files,
+          };
 
-    isDrawingRef.current = false;
+          onChange(JSON.stringify(scene));
+        },
+        [onChange]
+      );
 
-    if (currentStrokeRef.current) {
-      strokesRef.current = [
-        ...strokesRef.current,
-        currentStrokeRef.current,
-      ];
+      // ----------------------------------------------
+      // KEYBOARD SHORTCUTS
+      // ----------------------------------------------
 
-      currentStrokeRef.current = null;
-    }
+      const handleKeyDown = useCallback(
+        (event: KeyboardEvent<HTMLDivElement>) => {
+          if (
+            event.ctrlKey ||
+            event.metaKey ||
+            event.altKey
+          ) {
+            return;
+          }
 
-    redraw();
+          const target = event.target as HTMLElement;
 
-    onChange(JSON.stringify(strokesRef.current));
-  };
+          if (
+            target.isContentEditable ||
+            target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA"
+          ) {
+            return;
+          }
 
-  // ==========================================
-  // UNDO
-  // ==========================================
+          /*
+           * Let Excalidraw handle Delete and Backspace.
+           * It already supports deleting selected elements.
+           */
 
-  const undo = () => {
-    strokesRef.current = strokesRef.current.slice(0, -1);
+          const shortcuts: Record<
+            string,
+            WhiteboardTool
+          > = {
+            "1": "selection",
+            h: "hand",
+            r: "rectangle",
+            d: "diamond",
+            o: "ellipse",
+            a: "arrow",
+            l: "line",
+            p: "freedraw",
+            t: "text",
+            e: "eraser",
+          };
 
-    redraw();
+          const selectedTool =
+            shortcuts[event.key.toLowerCase()];
 
-    onChange(JSON.stringify(strokesRef.current));
-  };
+          if (selectedTool) {
+            event.preventDefault();
+            handleToolChange(selectedTool);
+          }
+        },
+        [handleToolChange]
+      );
 
-  // ==========================================
-  // CLEAR
-  // ==========================================
+      // ----------------------------------------------
+      // RENDER
+      // ----------------------------------------------
 
-  const clear = () => {
-    strokesRef.current = [];
-    currentStrokeRef.current = null;
-    isDrawingRef.current = false;
-
-    redraw();
-
-    onChange("[]");
-  };
-
-  return (
-    <section className="flex h-full min-h-0 flex-col bg-white">
-      {/* TOOLBAR */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
-        {/* Pencil */}
-        <button
-          type="button"
-          onClick={() => setIsEraser(false)}
-          aria-label="Pencil"
-          aria-pressed={!isEraser}
-          className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            !isEraser
-              ? "bg-blue-50 text-blue-600"
-              : "text-gray-500 hover:bg-gray-100"
-          }`}
+      return (
+        <div
+          className="whizboard-editor"
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
         >
-          <Pencil className="h-4 w-4" />
-        </button>
-
-        {/* Eraser */}
-        <button
-          type="button"
-          onClick={() => setIsEraser(true)}
-          aria-label="Eraser"
-          aria-pressed={isEraser}
-          className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            isEraser
-              ? "bg-blue-50 text-blue-600"
-              : "text-gray-500 hover:bg-gray-100"
-          }`}
-        >
-          <Eraser className="h-4 w-4" />
-        </button>
-
-        <span className="h-6 w-px bg-gray-200" />
-
-        {/* Colors */}
-        <div className="flex items-center gap-2">
-          {COLORS.map((itemColor) => (
-            <button
-              key={itemColor}
-              type="button"
-              onClick={() => {
-                setColor(itemColor);
-                setIsEraser(false);
-              }}
-              aria-label={`Choose ${itemColor}`}
-              aria-pressed={color === itemColor && !isEraser}
-              className={`h-6 w-6 rounded-full border transition-transform hover:scale-110 ${
-                color === itemColor && !isEraser
-                  ? "ring-2 ring-blue-500 ring-offset-2"
-                  : "border-gray-200"
-              }`}
-              style={{ backgroundColor: itemColor }}
-            />
-          ))}
-        </div>
-
-        <span className="h-6 w-px bg-gray-200" />
-
-        {/* Brush Size */}
-        <label className="flex items-center gap-2 text-xs text-gray-500">
-          Size
-
-          <input
-            type="range"
-            min={1}
-            max={12}
-            value={brushSize}
-            onChange={(event) =>
-              setBrushSize(Number(event.target.value))
-            }
-            className="w-20 accent-blue-600"
+          <Excalidraw
+            initialData={initialData}
+            excalidrawAPI={handleExcalidrawAPI}
+            onChange={handleChange}
+            UIOptions={{
+              canvasActions: {
+                loadScene: true,
+                saveToActiveFile: false,
+                toggleTheme: false,
+                export: {
+                  saveFileToDisk: true,
+                },
+              },
+            }}
           />
-        </label>
 
-        <div className="ml-auto flex items-center gap-1">
-          {/* Undo */}
-          <button
-            type="button"
-            onClick={undo}
-            disabled={strokesRef.current.length === 0}
-            aria-label="Undo last stroke"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40"
-          >
-            <Undo2 className="h-4 w-4" />
-          </button>
+          {/* CUSTOM LEFT TOOLBAR */}
 
-          {/* Clear */}
-          <button
-            type="button"
-            onClick={clear}
-            aria-label="Clear whiteboard"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600"
+          <aside
+            className="whizboard-toolbar"
+            aria-label="Whiteboard tools"
           >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            {TOOLBAR_TOOLS.map((tool) => {
+              const Icon = tool.icon;
+
+              const isDelete =
+                tool.id === "delete";
+
+              const isActive =
+                !isDelete &&
+                activeTool === tool.id;
+
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  title={
+                    tool.shortcut
+                      ? `${tool.label} (${tool.shortcut})`
+                      : tool.label
+                  }
+                  aria-label={tool.label}
+                  aria-pressed={
+                    isDelete ? undefined : isActive
+                  }
+                  disabled={!isAPIReady}
+                  onClick={() =>
+                    handleToolbarAction(tool.id)
+                  }
+                  className={[
+                    "whizboard-tool-button",
+                    isActive
+                      ? "whizboard-tool-active"
+                      : "",
+                    isDelete
+                      ? "whizboard-delete-button"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={
+                    {
+                      "--tool-color": tool.color,
+                    } as CSSProperties
+                  }
+                >
+                  <Icon
+                    size={21}
+                    strokeWidth={2}
+                  />
+                </button>
+              );
+            })}
+          </aside>
         </div>
-      </div>
+      );
+    }
 
-      {/* CANVAS */}
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-white">
-        <canvas
-          ref={canvasRef}
-          aria-label="Whiteboard drawing canvas"
-          className="absolute inset-0 h-full w-full touch-none"
-          onPointerDown={startDrawing}
-          onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerCancel={stopDrawing}
-          onLostPointerCapture={stopDrawing}
-        />
+    return Editor;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-white text-sm text-gray-500">
+        Loading whiteboard...
       </div>
-    </section>
+    ),
+  }
+);
+
+// ==================================================
+// WHITEBOARD COMPONENT
+// ==================================================
+
+export default function WhiteBoard(
+  props: WhiteBoardProps
+) {
+  return (
+    <div className="whizboard-excalidraw">
+      <ExcalidrawEditor {...props} />
+    </div>
   );
 }

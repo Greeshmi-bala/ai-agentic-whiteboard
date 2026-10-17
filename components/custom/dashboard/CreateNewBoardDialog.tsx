@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Dialog,
@@ -18,37 +19,85 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import { Plus, Sparkles, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
+
 import { toast } from "sonner";
+
+// ==================================================
+// TYPES
+// ==================================================
 
 interface CreateNewBoardDialogProps {
   children?: ReactNode;
   className?: string;
 }
 
+interface CreatedBoard {
+  id: number;
+  projectId: string;
+  projectName: string;
+  description: string | null;
+  userEmail: string;
+  createdAt: string;
+}
+
+interface CreateBoardResponse {
+  success?: boolean;
+  error?: string;
+  message?: string;
+  board?: CreatedBoard;
+}
+
+// ==================================================
+// COMPONENT
+// ==================================================
+
 export default function CreateNewBoardDialog({
   children,
   className,
 }: CreateNewBoardDialogProps) {
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
 
+  const [open, setOpen] = useState(false);
   const [boardName, setBoardName] = useState("");
   const [boardDescription, setBoardDescription] = useState("");
-
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+
+  // ==================================================
+  // CREATE BOARD
+  // ==================================================
 
   const handleCreateBoard = async (
     event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
+    if (isCreating) return;
+
     const trimmedName = boardName.trim();
     const trimmedDescription = boardDescription.trim();
 
+    // Validate board name.
     if (!trimmedName) {
       setError("Please enter a board name.");
       toast.error("Board name is required.");
+      return;
+    }
+
+    if (trimmedName.length > 255) {
+      setError("Board name cannot exceed 255 characters.");
+      toast.error("Board name is too long.");
+      return;
+    }
+
+    if (trimmedDescription.length > 500) {
+      setError("Description cannot exceed 500 characters.");
+      toast.error("Description is too long.");
       return;
     }
 
@@ -56,10 +105,12 @@ export default function CreateNewBoardDialog({
     setIsCreating(true);
 
     try {
+      // STEP 1: Create and save the board through the API.
       const response = await fetch("/api/boards", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           projectName: trimmedName,
@@ -67,7 +118,26 @@ export default function CreateNewBoardDialog({
         }),
       });
 
-      const data = await response.json();
+      // Handle unexpected non-JSON responses.
+      const contentType =
+        response.headers.get("content-type") ?? "";
+
+      if (!contentType.includes("application/json")) {
+        const responseText = await response.text();
+
+        console.error(
+          "Create board API returned a non-JSON response:",
+          response.status,
+          responseText.slice(0, 300)
+        );
+
+        throw new Error(
+          `Unexpected server response (HTTP ${response.status}). Check app/api/boards/route.ts.`
+        );
+      }
+
+      const data =
+        (await response.json()) as CreateBoardResponse;
 
       if (!response.ok) {
         throw new Error(
@@ -75,29 +145,41 @@ export default function CreateNewBoardDialog({
         );
       }
 
-      if (!data.board) {
+      // STEP 2: Verify that the API returned the saved board.
+      if (
+        !data.board ||
+        !data.board.projectId ||
+        data.board.projectId === "undefined"
+      ) {
         throw new Error(
-          "The server did not return the saved board."
+          "The server did not return a valid project ID."
         );
       }
 
-      // Notify mounted board lists to fetch the saved records.
+      const createdBoard = data.board;
+
+      // STEP 3: Reset the form and close the dialog.
+      setBoardName("");
+      setBoardDescription("");
+      setError("");
+      setOpen(false);
+
+      // STEP 4: Notify the dashboard to refresh its board list.
       window.dispatchEvent(
         new CustomEvent("boards:updated")
       );
 
-      // Close the modal only after a successful database save.
-      setOpen(false);
-
-      // Reset form.
-      setBoardName("");
-      setBoardDescription("");
-      setError("");
-
-      // Show success notification.
+      // STEP 5: Display a success notification.
       toast.success("Board created successfully!", {
-        description: `"${data.board.projectName}" has been saved.`,
+        description: `"${createdBoard.projectName}" is ready to use.`,
       });
+
+      // STEP 6: Navigate to the newly created workspace.
+      router.push(
+        `/workspace/${encodeURIComponent(
+          createdBoard.projectId
+        )}`
+      );
     } catch (err) {
       console.error("Failed to create board:", err);
 
@@ -116,6 +198,10 @@ export default function CreateNewBoardDialog({
     }
   };
 
+  // ==================================================
+  // HANDLE DIALOG OPEN/CLOSE
+  // ==================================================
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (isCreating) return;
 
@@ -126,9 +212,17 @@ export default function CreateNewBoardDialog({
     }
   };
 
+  // ==================================================
+  // UI
+  // ==================================================
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      {/* Reusable trigger: sidebar and dashboard */}
+    <Dialog
+      open={open}
+      onOpenChange={handleOpenChange}
+    >
+      {/* Reusable trigger button */}
+
       <DialogTrigger
         render={
           <button
@@ -148,7 +242,8 @@ export default function CreateNewBoardDialog({
         )}
       </DialogTrigger>
 
-      {/* Centered Modal */}
+      {/* Create board dialog */}
+
       <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-navy shadow-2xl sm:p-7">
         <form onSubmit={handleCreateBoard}>
           <DialogHeader className="space-y-3 text-left">
@@ -161,19 +256,24 @@ export default function CreateNewBoardDialog({
             </DialogTitle>
 
             <DialogDescription className="text-sm leading-6 text-slate-500">
-              Give your ideas a place to grow. Create a board for
-              brainstorming, planning, diagrams, and creative projects.
+              Give your ideas a place to grow. Create a
+              workspace for brainstorming, planning, diagrams,
+              and creative projects.
             </DialogDescription>
           </DialogHeader>
 
+          {/* FORM FIELDS */}
+
           <div className="mt-6 space-y-5">
-            {/* Board Name */}
+            {/* Board name */}
+
             <div className="space-y-2">
               <Label
                 htmlFor="board-name"
                 className="text-sm font-medium text-navy"
               >
-                Board Name <span className="text-red-500">*</span>
+                Board Name{" "}
+                <span className="text-red-500">*</span>
               </Label>
 
               <Input
@@ -187,20 +287,26 @@ export default function CreateNewBoardDialog({
                 }}
                 maxLength={255}
                 autoFocus
+                required
+                disabled={isCreating}
                 className="h-11 rounded-lg border-gray-200 bg-white focus-visible:ring-primary-blue"
                 aria-invalid={Boolean(error)}
                 aria-describedby={
-                  error ? "board-name-error" : undefined
+                  error ? "board-form-error" : undefined
                 }
               />
 
               <div className="flex justify-between text-xs text-slate-400">
-                <span>Choose a name for your workspace.</span>
+                <span>
+                  Choose a name for your workspace.
+                </span>
+
                 <span>{boardName.length}/255</span>
               </div>
             </div>
 
-            {/* Board Description */}
+            {/* Board description */}
+
             <div className="space-y-2">
               <Label
                 htmlFor="board-description"
@@ -222,6 +328,7 @@ export default function CreateNewBoardDialog({
                 }
                 maxLength={500}
                 rows={3}
+                disabled={isCreating}
                 className="resize-none rounded-lg border-gray-200 bg-white focus-visible:ring-primary-blue"
               />
 
@@ -230,10 +337,11 @@ export default function CreateNewBoardDialog({
               </div>
             </div>
 
-            {/* Inline Error */}
+            {/* Error message */}
+
             {error && (
               <p
-                id="board-name-error"
+                id="board-form-error"
                 role="alert"
                 className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
               >
@@ -242,7 +350,8 @@ export default function CreateNewBoardDialog({
             )}
           </div>
 
-          {/* Modal Actions */}
+          {/* ACTION BUTTONS */}
+
           <DialogFooter className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
@@ -256,13 +365,15 @@ export default function CreateNewBoardDialog({
 
             <Button
               type="submit"
-              disabled={isCreating || !boardName.trim()}
+              disabled={
+                isCreating || !boardName.trim()
+              }
               className="gap-2 rounded-lg bg-primary-blue text-white shadow-sm hover:bg-primary-blue/90"
             >
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
+                  Creating workspace...
                 </>
               ) : (
                 <>

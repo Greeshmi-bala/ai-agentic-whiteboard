@@ -3,12 +3,12 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-
 import { toast } from "sonner";
 
 import {
@@ -21,9 +21,9 @@ import WorkspaceHeader from "@/components/custom/workspace/workspaceHeader";
 import WhiteBoard from "@/components/custom/workspace/whiteBoard";
 import SmartDoc from "@/components/custom/workspace/smartDoc";
 
-// ==========================================
+// ==================================================
 // TYPES
-// ==========================================
+// ==================================================
 
 interface Board {
   id: number;
@@ -46,26 +46,28 @@ interface BoardResponse {
 
 type WorkspaceTab = "whiteboard" | "doc";
 
-// ==========================================
-// COMPONENT
-// ==========================================
+// ==================================================
+// WORKSPACE PAGE
+// ==================================================
 
 export default function WorkspacePage() {
   const params = useParams<{
-    projectId: string | string[];
+    projectid?: string | string[];
+    projectId?: string | string[];
   }>();
 
   const router = useRouter();
 
-  const rawProjectId = params.projectId;
+  const rawProjectId =
+    params.projectid ?? params.projectId;
 
   const projectId = Array.isArray(rawProjectId)
     ? rawProjectId[0]
     : rawProjectId;
 
-  // ==========================================
+  // ==================================================
   // STATE
-  // ==========================================
+  // ==================================================
 
   const [board, setBoard] = useState<Board | null>(null);
 
@@ -88,31 +90,85 @@ export default function WorkspacePage() {
 
   const [loadError, setLoadError] = useState("");
 
-  // ==========================================
-  // LOAD SELECTED BOARD
-  // ==========================================
+  // ==================================================
+  // REFS
+  // ==================================================
+
+  const autosaveTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveInProgressRef = useRef(false);
+
+  const dirtyRef = useRef(false);
+
+  const mountedRef = useRef(false);
+
+  const latestContentRef = useRef({
+    projectName: "",
+    whiteboardContent: "[]",
+    documentContent: "",
+  });
+
+  const savedContentRef = useRef({
+    projectName: "",
+    whiteboardContent: "[]",
+    documentContent: "",
+  });
+
+  // Keep the latest content available to the save function.
+  useEffect(() => {
+    latestContentRef.current = {
+      projectName,
+      whiteboardContent,
+      documentContent,
+    };
+  }, [
+    projectName,
+    whiteboardContent,
+    documentContent,
+  ]);
+
+  // ==================================================
+  // CLEAR AUTOSAVE TIMER
+  // ==================================================
+
+  const clearAutosaveTimer = useCallback(() => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+  }, []);
+
+  // ==================================================
+  // LOAD WORKSPACE
+  // ==================================================
 
   const loadWorkspace = useCallback(async () => {
+    const validProjectId = projectId?.trim();
+
     if (
-      !projectId ||
-      projectId === "undefined" ||
-      projectId === "null"
+      !validProjectId ||
+      validProjectId === "undefined" ||
+      validProjectId === "null"
     ) {
       setBoard(null);
       setLoadError(
         "The workspace URL does not contain a valid project ID."
       );
       setIsLoading(false);
-
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setLoadError("");
+    clearAutosaveTimer();
 
+    setIsLoading(true);
+    setLoadError("");
+
+    dirtyRef.current = false;
+
+    try {
       const response = await fetch(
-        `/api/boards/${encodeURIComponent(projectId)}`,
+        `/api/boards/${encodeURIComponent(validProjectId)}`,
         {
           method: "GET",
           cache: "no-store",
@@ -122,21 +178,12 @@ export default function WorkspacePage() {
         }
       );
 
-      // Check the response type before parsing JSON.
       const contentType =
-        response.headers.get("content-type");
+        response.headers.get("content-type") ?? "";
 
-      if (!contentType?.includes("application/json")) {
-        const responseText = await response.text();
-
-        console.error(
-          "Workspace API returned a non-JSON response:",
-          response.status,
-          responseText.slice(0, 300)
-        );
-
+      if (!contentType.includes("application/json")) {
         throw new Error(
-          `Unexpected server response (HTTP ${response.status}). Check the API route.`
+          `Unexpected server response (HTTP ${response.status}).`
         );
       }
 
@@ -157,148 +204,303 @@ export default function WorkspacePage() {
 
       const loadedBoard = data.board;
 
+      if (loadedBoard.projectId !== validProjectId) {
+        throw new Error(
+          "The returned workspace ID does not match the requested project."
+        );
+      }
+
+      const loadedContent = {
+        projectName: loadedBoard.projectName,
+        whiteboardContent:
+          loadedBoard.whiteboardContent || "[]",
+        documentContent:
+          loadedBoard.documentContent || "",
+      };
+
       setBoard(loadedBoard);
-
-      setProjectName(loadedBoard.projectName);
-
+      setProjectName(loadedContent.projectName);
       setWhiteboardContent(
-        loadedBoard.whiteboardContent || "[]"
+        loadedContent.whiteboardContent
+      );
+      setDocumentContent(
+        loadedContent.documentContent
       );
 
-      setDocumentContent(
-        loadedBoard.documentContent || ""
-      );
+      latestContentRef.current = loadedContent;
+      savedContentRef.current = loadedContent;
+
+      dirtyRef.current = false;
 
       setIsSaved(true);
       setLoadError("");
     } catch (error) {
       console.error("Failed to load workspace:", error);
 
-      const message =
+      setBoard(null);
+
+      setLoadError(
         error instanceof Error
           ? error.message
-          : "Failed to load workspace.";
-
-      setBoard(null);
-      setLoadError(message);
+          : "Failed to load workspace."
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, clearAutosaveTimer]);
 
-  // ==========================================
-  // LOAD ON PAGE OPEN
-  // ==========================================
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      clearAutosaveTimer();
+    };
+  }, [clearAutosaveTimer]);
 
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
 
-  // ==========================================
+  // ==================================================
+  // SAVE WORKSPACE
+  // ==================================================
+
+  const handleSave = useCallback(
+    async (showToast = true): Promise<boolean> => {
+      if (!board || !projectId) {
+        return false;
+      }
+
+      // Prevent simultaneous requests.
+      if (saveInProgressRef.current) {
+        return false;
+      }
+
+      const snapshot = {
+        ...latestContentRef.current,
+      };
+
+      const saved = savedContentRef.current;
+
+      const hasChanges =
+        snapshot.projectName !== saved.projectName ||
+        snapshot.whiteboardContent !==
+          saved.whiteboardContent ||
+        snapshot.documentContent !==
+          saved.documentContent;
+
+      if (!hasChanges) {
+        dirtyRef.current = false;
+        setIsSaved(true);
+        return true;
+      }
+
+      saveInProgressRef.current = true;
+
+      clearAutosaveTimer();
+      setIsSaving(true);
+
+      try {
+        const response = await fetch(
+          `/api/boards/${encodeURIComponent(projectId)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(snapshot),
+          }
+        );
+
+        const contentType =
+          response.headers.get("content-type") ?? "";
+
+        if (!contentType.includes("application/json")) {
+          throw new Error(
+            `Unexpected server response (HTTP ${response.status}).`
+          );
+        }
+
+        const data =
+          (await response.json()) as BoardResponse;
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Failed to save workspace."
+          );
+        }
+
+        if (!data.board) {
+          throw new Error(
+            "The server did not return the saved workspace."
+          );
+        }
+
+        savedContentRef.current = snapshot;
+
+        if (mountedRef.current) {
+          setBoard(data.board);
+        }
+
+        const latest = latestContentRef.current;
+
+        // Changes might have happened while the request
+        // was in progress. Do not mark those changes saved.
+        const hasNewerChanges =
+          latest.projectName !== snapshot.projectName ||
+          latest.whiteboardContent !==
+            snapshot.whiteboardContent ||
+          latest.documentContent !==
+            snapshot.documentContent;
+
+        dirtyRef.current = hasNewerChanges;
+
+        if (mountedRef.current) {
+          setIsSaved(!hasNewerChanges);
+        }
+
+        if (showToast) {
+          toast.success("Changes saved successfully!", {
+            description:
+              "Your latest workspace changes have been saved.",
+          });
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Failed to save workspace:", error);
+
+        dirtyRef.current = true;
+
+        if (mountedRef.current) {
+          setIsSaved(false);
+        }
+
+        if (showToast) {
+          toast.error("Failed to save changes", {
+            description:
+              error instanceof Error
+                ? error.message
+                : "Please try again.",
+          });
+        }
+
+        return false;
+      } finally {
+        saveInProgressRef.current = false;
+
+        if (mountedRef.current) {
+          setIsSaving(false);
+        }
+
+        // If changes arrived while saving, schedule another
+        // save instead of losing the latest edits.
+        if (dirtyRef.current && mountedRef.current) {
+          clearAutosaveTimer();
+
+          autosaveTimerRef.current = setTimeout(() => {
+            void handleSave(true);
+          }, 10_000);
+        }
+      }
+    },
+    [
+      board,
+      projectId,
+      clearAutosaveTimer,
+    ]
+  );
+
+  // ==================================================
   // HANDLE WHITEBOARD CHANGES
-  // ==========================================
+  // ==================================================
 
   const handleWhiteboardChange = useCallback(
     (content: string) => {
       setWhiteboardContent(content);
+
+      latestContentRef.current = {
+        ...latestContentRef.current,
+        whiteboardContent: content,
+      };
+
+      dirtyRef.current = true;
       setIsSaved(false);
     },
     []
   );
 
-  // ==========================================
+  // ==================================================
   // HANDLE DOCUMENT CHANGES
-  // ==========================================
+  // ==================================================
 
   const handleDocumentChange = useCallback(
     (content: string) => {
       setDocumentContent(content);
+
+      latestContentRef.current = {
+        ...latestContentRef.current,
+        documentContent: content,
+      };
+
+      dirtyRef.current = true;
       setIsSaved(false);
     },
     []
   );
 
-  // ==========================================
-  // SAVE WORKSPACE
-  // ==========================================
+  // ==================================================
+  // HANDLE PROJECT NAME CHANGES
+  // ==================================================
 
-  const handleSave = async () => {
-    if (!board || !projectId || isSaving) {
+  const handleProjectNameChange = useCallback(
+    (name: string) => {
+      setProjectName(name);
+
+      latestContentRef.current = {
+        ...latestContentRef.current,
+        projectName: name,
+      };
+
+      dirtyRef.current = true;
+      setIsSaved(false);
+    },
+    []
+  );
+
+  // ==================================================
+  // AUTOSAVE EVERY 10 SECONDS AFTER CHANGES
+  // ==================================================
+
+  useEffect(() => {
+    clearAutosaveTimer();
+
+    if (!board || isLoading || !dirtyRef.current) {
       return;
     }
 
-    setIsSaving(true);
+    autosaveTimerRef.current = setTimeout(() => {
+      void handleSave(true);
+    }, 10_000);
 
-    try {
-      const response = await fetch(
-        `/api/boards/${encodeURIComponent(projectId)}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            projectName,
-            whiteboardContent,
-            documentContent,
-          }),
-        }
-      );
+    return () => {
+      clearAutosaveTimer();
+    };
+  }, [
+    board,
+    isLoading,
+    whiteboardContent,
+    documentContent,
+    projectName,
+    handleSave,
+    clearAutosaveTimer,
+  ]);
 
-      const contentType =
-        response.headers.get("content-type");
-
-      if (!contentType?.includes("application/json")) {
-        const responseText = await response.text();
-
-        console.error(
-          "Workspace save returned a non-JSON response:",
-          response.status,
-          responseText.slice(0, 300)
-        );
-
-        throw new Error(
-          `Unexpected server response (HTTP ${response.status}).`
-        );
-      }
-
-      const data =
-        (await response.json()) as BoardResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Failed to save workspace."
-        );
-      }
-
-      if (data.board) {
-        setBoard(data.board);
-        setProjectName(data.board.projectName);
-      }
-
-      setIsSaved(true);
-
-      toast.success("Workspace saved successfully!", {
-        description:
-          "Your board and document changes have been saved.",
-      });
-    } catch (error) {
-      console.error("Failed to save workspace:", error);
-
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to save workspace."
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // ==========================================
+  // ==================================================
   // LOADING SCREEN
-  // ==========================================
+  // ==================================================
 
   if (isLoading) {
     return (
@@ -322,9 +524,9 @@ export default function WorkspacePage() {
     );
   }
 
-  // ==========================================
-  // WORKSPACE NOT FOUND / LOAD ERROR
-  // ==========================================
+  // ==================================================
+  // WORKSPACE NOT FOUND
+  // ==================================================
 
   if (!board) {
     return (
@@ -361,7 +563,6 @@ export default function WorkspacePage() {
           <button
             type="button"
             onClick={() => {
-              setIsLoading(true);
               void loadWorkspace();
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
@@ -374,9 +575,9 @@ export default function WorkspacePage() {
     );
   }
 
-  // ==========================================
+  // ==================================================
   // MAIN WORKSPACE
-  // ==========================================
+  // ==================================================
 
   return (
     <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-white">
@@ -384,12 +585,13 @@ export default function WorkspacePage() {
         projectName={projectName}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onSave={handleSave}
+        onSave={() => {
+          void handleSave(true);
+        }}
         isSaving={isSaving}
         isSaved={isSaved}
       />
 
-      {/* Workspace Content */}
       <section className="min-h-0 flex-1 overflow-hidden bg-white">
         {activeTab === "whiteboard" ? (
           <WhiteBoard

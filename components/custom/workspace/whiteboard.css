@@ -1,0 +1,305 @@
+/* ==================================================
+   WHIZBOARD — EXCALIDRAW
+   Custom Colorful Vertical Toolbar
+   ================================================== */
+
+/* ==================================================
+   MAIN CONTAINER
+   ================================================== */
+
+.whizboard-excalidraw {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.whizboard-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  outline: none;
+  background: #ffffff;
+}
+
+/* ==================================================
+   EXCALIDRAW CANVAS
+   ================================================== */
+
+.whizboard-editor .excalidraw {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  --color-primary: #2f6bff;
+  --color-primary-darker: #2458df;
+  --color-primary-darkest: #1946bd;
+}
+
+/* ==================================================
+   HIDE DEFAULT TOOLBARS
+   ================================================== */
+
+.whizboard-editor .App-top-bar,
+.whizboard-editor .App-toolbar {
+  display: none !important;
+}
+
+.whizboard-editor .App-bottom-bar {
+  display: none !important;
+}
+
+.whizboard-editor .App-menu__left {
+  display: none !important;
+}
+
+/* ==================================================
+   CUSTOM VERTICAL TOOLBAR
+   ================================================== */
+
+.whizboard-toolbar {
+  position: absolute;
+
+  left: 20px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  z-index: 100;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 4px;
+
+  width: 52px;
+  max-height: calc(100% - 40px);
+
+  padding: 9px 6px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  border: 1px solid #e5eaf3;
+  border-radius: 19px;
+
+  background: rgba(255, 255, 255, 0.97);
+
+  box-shadow:
+    0 8px 28px rgba(15, 23, 42, 0.09),
+    0 2px 6px rgba(15, 23, 42, 0.04);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  scrollbar-width: none;
+
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.whizboard-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==================================================
+   TOOL BUTTONS
+   ================================================== */
+
+.whizboard-tool-button {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 38px;
+  height: 38px;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 12px;
+
+  background: transparent;
+
+  color: var(--tool-color, #64748b);
+
+  cursor: pointer;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.whizboard-tool-button svg {
+  color: var(--tool-color, #64748b);
+
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+/* ==================================================
+   HOVER
+   ================================================== */
+
+.whizboard-tool-button:hover:not(:disabled) {
+  background: color-mix(
+    in srgb,
+    var(--tool-color) 10%,
+    white
+  );
+
+  border-color: color-mix(
+    in srgb,
+    var(--tool-color) 20%,
+    white
+  );
+}
+
+.whizboard-tool-button:hover:not(:disabled) svg {
+  transform: scale(1.08);
+}
+
+/* ==================================================
+   ACTIVE TOOL
+   ================================================== */
+
+.whizboard-tool-button.whizboard-tool-active {
+  background: color-mix(
+    in srgb,
+    var(--tool-color) 13%,
+    white
+  );
+
+  border-color: color-mix(
+    in srgb,
+    var(--tool-color) 22%,
+    white
+  );
+
+  box-shadow:
+    inset 0 0 0 1px
+    color-mix(
+      in srgb,
+      var(--tool-color) 5%,
+      transparent
+    );
+}
+
+.whizboard-tool-button.whizboard-tool-active svg {
+  color: var(--tool-color);
+}
+
+/* ==================================================
+   DELETE BUTTON
+   ================================================== */
+
+.whizboard-delete-button {
+  margin-top: 7px;
+
+  border-top: 1px solid #f0e8e8;
+  border-radius: 10px;
+
+  color: #dc2626;
+}
+
+.whizboard-delete-button:hover:not(:disabled) {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.whizboard-delete-button svg {
+  color: #dc2626;
+}
+
+/* ==================================================
+   CLICK FEEDBACK
+   ================================================== */
+
+.whizboard-tool-button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* ==================================================
+   DISABLED STATE
+   ================================================== */
+
+.whizboard-tool-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+/* ==================================================
+   KEYBOARD FOCUS
+   ================================================== */
+
+.whizboard-tool-button:focus-visible {
+  outline: 2px solid var(--tool-color, #2f6bff);
+  outline-offset: 2px;
+}
+
+/* ==================================================
+   MOBILE
+   ================================================== */
+
+@media (max-width: 640px) {
+  .whizboard-toolbar {
+    left: 12px;
+
+    width: 46px;
+
+    gap: 3px;
+
+    padding: 7px 4px;
+
+    border-radius: 15px;
+  }
+
+  .whizboard-tool-button {
+    width: 36px;
+    height: 36px;
+
+    border-radius: 10px;
+  }
+
+  .whizboard-tool-button svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ==================================================
+   SHORT VIEWPORTS
+   ================================================== */
+
+@media (max-height: 480px) {
+  .whizboard-toolbar {
+    top: 10px;
+    bottom: 10px;
+
+    transform: none;
+
+    gap: 2px;
+
+    padding: 5px;
+  }
+
+  .whizboard-tool-button {
+    width: 33px;
+    height: 33px;
+  }
+}
