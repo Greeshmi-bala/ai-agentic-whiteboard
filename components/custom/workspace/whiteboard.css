@@ -1,108 +1,108 @@
-/* ==================================================
-   WHIZBOARD — EXCALIDRAW
-   Custom Colorful Vertical Toolbar
-   ================================================== */
+/* =========================================================
+   WHIZBOARD — PROFESSIONAL COLORFUL PROPERTY TOOLBAR
+   Modern, compact, responsive design
+   ========================================================= */
 
-/* ==================================================
-   MAIN CONTAINER
-   ================================================== */
+/* =========================================================
+   CANVAS
+   ========================================================= */
 
 .whizboard-excalidraw {
   position: relative;
+  isolation: isolate;
+
   width: 100%;
   height: 100%;
+
   min-width: 0;
   min-height: 0;
+
   overflow: hidden;
+
   background: #ffffff;
 }
 
 .whizboard-editor {
   position: relative;
+
   width: 100%;
   height: 100%;
+
   min-width: 0;
   min-height: 0;
+
   overflow: hidden;
+
   outline: none;
+
   background: #ffffff;
 }
-
-/* ==================================================
-   EXCALIDRAW CANVAS
-   ================================================== */
 
 .whizboard-editor .excalidraw {
   width: 100%;
   height: 100%;
+
   min-width: 0;
   min-height: 0;
 
-  --color-primary: #2f6bff;
-  --color-primary-darker: #2458df;
-  --color-primary-darkest: #1946bd;
+  --color-primary: #7c3aed;
+  --color-primary-darker: #6d28d9;
+  --color-primary-darkest: #5b21b6;
 }
 
-/* ==================================================
+/* =========================================================
    HIDE DEFAULT TOOLBARS
-   ================================================== */
+   ========================================================= */
 
 .whizboard-editor .App-top-bar,
-.whizboard-editor .App-toolbar {
-  display: none !important;
-}
-
-.whizboard-editor .App-bottom-bar {
-  display: none !important;
-}
-
+.whizboard-editor .App-toolbar,
+.whizboard-editor .App-bottom-bar,
 .whizboard-editor .App-menu__left {
   display: none !important;
 }
 
-/* ==================================================
-   CUSTOM VERTICAL TOOLBAR
-   ================================================== */
+/* =========================================================
+   LEFT TOOLBAR
+   ========================================================= */
 
 .whizboard-toolbar {
   position: absolute;
 
-  left: 20px;
+  left: 18px;
   top: 50%;
 
   transform: translateY(-50%);
 
-  z-index: 100;
+  z-index: 30;
 
   display: flex;
   flex-direction: column;
   align-items: center;
 
-  gap: 4px;
+  gap: 5px;
 
-  width: 52px;
-  max-height: calc(100% - 40px);
+  width: 54px;
+  max-height: calc(100% - 36px);
 
-  padding: 9px 6px;
+  padding: 10px 6px;
 
   overflow-x: hidden;
   overflow-y: auto;
 
-  border: 1px solid #e5eaf3;
-  border-radius: 19px;
+  border: 1px solid #e9e5f5;
+  border-radius: 20px;
 
-  background: rgba(255, 255, 255, 0.97);
+  background: rgba(255, 255, 255, 0.96);
 
   box-shadow:
-    0 8px 28px rgba(15, 23, 42, 0.09),
-    0 2px 6px rgba(15, 23, 42, 0.04);
+    0 12px 32px rgba(45, 35, 80, 0.10),
+    0 2px 8px rgba(45, 35, 80, 0.04);
 
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 
   scrollbar-width: none;
 
-  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -110,9 +110,47 @@
   display: none;
 }
 
-/* ==================================================
+/* =========================================================
+   TOOLBAR BRAND
+   ========================================================= */
+
+.whizboard-toolbar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  margin-bottom: 2px;
+
+  border-radius: 12px;
+
+  background: linear-gradient(
+    135deg,
+    #8b5cf6,
+    #6366f1,
+    #3b82f6
+  );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 10px rgba(124, 58, 237, 0.22);
+}
+
+.whizboard-toolbar-divider {
+  width: 26px;
+  height: 1px;
+
+  margin: 2px 0 5px;
+
+  background: #e9e5f5;
+}
+
+/* =========================================================
    TOOL BUTTONS
-   ================================================== */
+   ========================================================= */
 
 .whizboard-tool-button {
   position: relative;
@@ -138,7 +176,7 @@
   cursor: pointer;
 
   transition:
-    background-color 180ms ease,
+    background 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease,
     transform 180ms ease;
@@ -148,40 +186,14 @@
   color: var(--tool-color, #64748b);
 
   transition:
-    color 180ms ease,
-    transform 180ms ease;
+    transform 180ms ease,
+    color 180ms ease;
 }
-
-/* ==================================================
-   HOVER
-   ================================================== */
 
 .whizboard-tool-button:hover:not(:disabled) {
   background: color-mix(
     in srgb,
-    var(--tool-color) 10%,
-    white
-  );
-
-  border-color: color-mix(
-    in srgb,
-    var(--tool-color) 20%,
-    white
-  );
-}
-
-.whizboard-tool-button:hover:not(:disabled) svg {
-  transform: scale(1.08);
-}
-
-/* ==================================================
-   ACTIVE TOOL
-   ================================================== */
-
-.whizboard-tool-button.whizboard-tool-active {
-  background: color-mix(
-    in srgb,
-    var(--tool-color) 13%,
+    var(--tool-color) 11%,
     white
   );
 
@@ -190,31 +202,59 @@
     var(--tool-color) 22%,
     white
   );
+}
+
+.whizboard-tool-button:hover:not(:disabled) svg {
+  transform: scale(1.1);
+}
+
+.whizboard-tool-button.whizboard-tool-active {
+  background: color-mix(
+    in srgb,
+    var(--tool-color) 14%,
+    white
+  );
+
+  border-color: color-mix(
+    in srgb,
+    var(--tool-color) 30%,
+    white
+  );
 
   box-shadow:
     inset 0 0 0 1px
     color-mix(
       in srgb,
-      var(--tool-color) 5%,
+      var(--tool-color) 6%,
       transparent
     );
 }
 
-.whizboard-tool-button.whizboard-tool-active svg {
-  color: var(--tool-color);
+.whizboard-tool-button:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
-/* ==================================================
+.whizboard-tool-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.whizboard-tool-button:focus-visible {
+  outline: 2px solid var(--tool-color, #7c3aed);
+  outline-offset: 2px;
+}
+
+/* =========================================================
    DELETE BUTTON
-   ================================================== */
+   ========================================================= */
 
 .whizboard-delete-button {
   margin-top: 7px;
 
-  border-top: 1px solid #f0e8e8;
+  border-top: 1px solid #fee2e2;
   border-radius: 10px;
 
-  color: #dc2626;
+  color: #ef4444;
 }
 
 .whizboard-delete-button:hover:not(:disabled) {
@@ -223,42 +263,1449 @@
 }
 
 .whizboard-delete-button svg {
-  color: #dc2626;
+  color: #ef4444;
 }
 
-/* ==================================================
-   CLICK FEEDBACK
-   ================================================== */
+/* =========================================================
+   PROPERTY PANEL
+   ========================================================= */
 
-.whizboard-tool-button:active:not(:disabled) {
-  transform: scale(0.94);
+.whizboard-properties {
+  position: absolute;
+
+  z-index: 40;
+
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+
+  display: flex;
+  flex-direction: column;
+
+  width: 350px;
+  max-width: calc(100% - 100px);
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  border: 1px solid #e9e5f5;
+  border-radius: 20px;
+
+  background: rgba(255, 255, 255, 0.98);
+
+  color: #1e293b;
+
+  box-shadow:
+    0 20px 60px rgba(35, 25, 70, 0.13),
+    0 4px 14px rgba(35, 25, 70, 0.05);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-/* ==================================================
-   DISABLED STATE
-   ================================================== */
+/* =========================================================
+   PANEL HEADER
+   ========================================================= */
 
-.whizboard-tool-button:disabled {
-  cursor: wait;
-  opacity: 0.55;
+.whizboard-properties-header {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  flex: 0 0 auto;
+
+  padding: 16px;
+
+  border-bottom: 1px solid #f0edf8;
+
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      rgba(167, 139, 250, 0.13),
+      transparent 55%
+    ),
+    #ffffff;
 }
 
-/* ==================================================
-   KEYBOARD FOCUS
-   ================================================== */
+.whizboard-properties-heading {
+  display: flex;
+  align-items: center;
 
-.whizboard-tool-button:focus-visible {
-  outline: 2px solid var(--tool-color, #2f6bff);
+  gap: 11px;
+
+  min-width: 0;
+}
+
+.whizboard-properties-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 40px;
+  height: 40px;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 13px;
+
+  background: linear-gradient(
+    135deg,
+    #f3e8ff,
+    #e0e7ff
+  );
+
+  color: #7c3aed;
+}
+
+.whizboard-properties-title {
+  min-width: 0;
+}
+
+.whizboard-properties-title h3 {
+  margin: 0;
+
+  overflow: hidden;
+
+  color: #172033;
+
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.4;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whizboard-properties-title p {
+  margin: 3px 0 0;
+
+  color: #7c8498;
+
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.whizboard-close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 32px;
+  height: 32px;
+
+  border: 1px solid #e8e5f0;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.whizboard-close-button:hover {
+  transform: rotate(5deg);
+
+  background: #f5f3ff;
+
+  color: #7c3aed;
+}
+
+/* =========================================================
+   QUICK COLORS
+   ========================================================= */
+
+.whizboard-quick-colors {
+  flex: 0 0 auto;
+
+  padding: 12px 15px;
+
+  border-bottom: 1px solid #f1eef7;
+
+  background: #fcfbff;
+}
+
+.whizboard-quick-label {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #7c8498;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.whizboard-quick-swatches {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  overflow-x: auto;
+
+  padding: 3px 2px 5px;
+
+  scrollbar-width: thin;
+}
+
+.whizboard-quick-swatch {
+  position: relative;
+
+  flex: 0 0 auto;
+
+  width: 21px;
+  height: 21px;
+
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 7px;
+
+  cursor: pointer;
+
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.whizboard-quick-swatch:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.whizboard-quick-swatch.selected {
+  outline: 2px solid #8b5cf6;
   outline-offset: 2px;
 }
 
-/* ==================================================
-   MOBILE
-   ================================================== */
+/* =========================================================
+   PROPERTY TABS
+   ========================================================= */
 
-@media (max-width: 640px) {
+.whizboard-property-tabs {
+  display: grid;
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  gap: 4px;
+
+  flex: 0 0 auto;
+
+  padding: 9px 10px;
+
+  border-bottom: 1px solid #f0edf8;
+
+  background: #ffffff;
+}
+
+.whizboard-property-tabs button {
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  min-width: 0;
+
+  padding: 9px 3px;
+
+  border: 1px solid transparent;
+  border-radius: 11px;
+
+  background: transparent;
+
+  color: #8490a5;
+
+  font-size: 10px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.whizboard-property-tabs button:hover {
+  background: #f8f7ff;
+  color: #6d28d9;
+}
+
+.whizboard-property-tabs button.active {
+  border-color: #e9d5ff;
+
+  background: linear-gradient(
+    135deg,
+    #f5f0ff,
+    #eff3ff
+  );
+
+  color: #7c3aed;
+}
+
+/* =========================================================
+   SCROLLABLE PROPERTY CONTENT
+   ========================================================= */
+
+.whizboard-property-content {
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+  padding: 2px 15px 12px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  scrollbar-width: thin;
+  scrollbar-color: #d9d0ef transparent;
+}
+
+.whizboard-property-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.whizboard-property-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.whizboard-property-content::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: #d9d0ef;
+}
+
+/* =========================================================
+   PROPERTY SECTIONS
+   ========================================================= */
+
+.whizboard-section {
+  padding: 15px 0;
+
+  border-bottom: 1px solid #f0edf6;
+}
+
+.whizboard-section:last-child {
+  border-bottom: 0;
+}
+
+.whizboard-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 13px;
+}
+
+.whizboard-section-title {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  min-width: 0;
+}
+
+.whizboard-section-title > div {
+  min-width: 0;
+}
+
+.whizboard-section-title h4 {
+  margin: 0;
+
+  color: #27334a;
+
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.whizboard-section-title p {
+  margin: 3px 0 0;
+
+  color: #929bad;
+
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* =========================================================
+   COLORFUL SECTION ICONS
+   ========================================================= */
+
+.whizboard-section-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 32px;
+  height: 32px;
+
+  border-radius: 10px;
+}
+
+.fill-icon {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
+.border-icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.opacity-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.pattern-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.shape-icon {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+
+.text-icon {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.layout-icon {
+  background: #cffafe;
+  color: #0891b2;
+}
+
+.arrange-icon {
+  background: #fce7f3;
+  color: #db2777;
+}
+
+/* =========================================================
+   COLOR PICKER ROW
+   ========================================================= */
+
+.whizboard-color-row {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  margin-bottom: 12px;
+}
+
+.whizboard-color-picker {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 39px;
+  height: 39px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  cursor: pointer;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.whizboard-color-picker:hover {
+  border-color: #c4b5fd;
+
+  box-shadow:
+    0 0 0 3px rgba(139, 92, 246, 0.08);
+}
+
+.whizboard-color-picker input[type="color"] {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+
+  pointer-events: none;
+}
+
+.whizboard-color-picker > span {
+  width: 23px;
+  height: 23px;
+
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 7px;
+}
+
+.whizboard-color-value {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+
+  min-width: 0;
+}
+
+.whizboard-color-value span {
+  color: #9aa3b4;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  letter-spacing: 0.08em;
+}
+
+.whizboard-color-value code {
+  color: #475569;
+
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.whizboard-icon-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  margin-left: auto;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 9px;
+
+  background: #faf5ff;
+
+  color: #9333ea;
+
+  cursor: pointer;
+}
+
+.whizboard-icon-action:hover {
+  background: #f3e8ff;
+}
+
+/* =========================================================
+   CUSTOM COLOR PICKER
+   ========================================================= */
+
+.whizboard-custom-color {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 12px;
+  padding: 10px;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 12px;
+
+  background: #faf5ff;
+}
+
+.whizboard-custom-color label {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  color: #6b21a8;
+
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.whizboard-custom-color input[type="color"] {
+  width: 30px;
+  height: 30px;
+
+  padding: 2px;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  cursor: pointer;
+}
+
+.whizboard-custom-color button {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  padding: 7px 9px;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #7c3aed;
+
+  font-size: 10px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+/* =========================================================
+   COLOR GRID
+   ========================================================= */
+
+.whizboard-color-grid {
+  display: grid;
+
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+
+  gap: 8px;
+
+  margin: 4px 0 10px;
+}
+
+.whizboard-color-swatch {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  aspect-ratio: 1;
+
+  min-width: 0;
+
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 9px;
+
+  cursor: pointer;
+
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.whizboard-color-swatch:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 4px 10px rgba(15, 23, 42, 0.1);
+}
+
+.whizboard-color-swatch.selected {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+.whizboard-color-swatch svg {
+  color: #ffffff;
+
+  filter: drop-shadow(
+    0 1px 2px rgba(0, 0, 0, 0.25)
+  );
+}
+
+.whizboard-color-swatch svg.dark-check {
+  color: #475569;
+  filter: none;
+}
+
+.whizboard-color-swatch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* =========================================================
+   SHOW MORE COLORS
+   ========================================================= */
+
+.whizboard-show-colors {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  width: 100%;
+
+  padding: 7px;
+
+  border: 1px solid #ede9fe;
+  border-radius: 9px;
+
+  background: #faf5ff;
+
+  color: #7c3aed;
+
+  font-size: 10px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+.whizboard-show-colors:hover {
+  background: #f3e8ff;
+}
+
+.whizboard-show-colors svg {
+  transition: transform 180ms ease;
+}
+
+.whizboard-show-colors svg.rotated {
+  transform: rotate(180deg);
+}
+
+/* =========================================================
+   PROPERTY FIELDS
+   ========================================================= */
+
+.whizboard-field {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+
+  min-width: 0;
+
+  margin: 0 0 12px;
+}
+
+.whizboard-field > span {
+  color: #657087;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.whizboard-field input:not([type="color"]):not([type="range"]):not([type="checkbox"]),
+.whizboard-field select,
+.whizboard-field textarea {
+  box-sizing: border-box;
+
+  width: 100%;
+  min-width: 0;
+  min-height: 37px;
+
+  padding: 9px 10px;
+
+  border: 1px solid #e1e5ee;
+  border-radius: 10px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font: inherit;
+  font-size: 11px;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.whizboard-field textarea {
+  min-height: 90px;
+
+  resize: vertical;
+
+  line-height: 1.6;
+}
+
+.whizboard-field input:focus,
+.whizboard-field select:focus,
+.whizboard-field textarea:focus {
+  border-color: #a78bfa;
+
+  box-shadow:
+    0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.whizboard-field-grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+}
+
+.whizboard-field-grid .whizboard-field {
+  min-width: 0;
+}
+
+/* =========================================================
+   OPACITY / ROUGHNESS SLIDERS
+   ========================================================= */
+
+.whizboard-range {
+  display: block;
+
+  width: 100%;
+  height: 6px;
+
+  margin: 7px 0 9px;
+
+  border-radius: 999px;
+
+  cursor: pointer;
+}
+
+.whizboard-value-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 38px;
+
+  padding: 5px 8px;
+
+  border: 1px solid #ede9fe;
+  border-radius: 8px;
+
+  background: #f5f3ff;
+
+  color: #7c3aed;
+
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.whizboard-slider-heading {
+  margin-top: 16px;
+}
+
+.whizboard-slider-label {
+  color: #657087;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   FILL PATTERNS
+   ========================================================= */
+
+.whizboard-pattern-grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 8px;
+}
+
+.whizboard-pattern-option {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  min-width: 0;
+
+  padding: 9px;
+
+  border: 1px solid #e6e9f1;
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #596579;
+
+  font-size: 10px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.whizboard-pattern-option:hover:not(:disabled) {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
+
+.whizboard-pattern-option.selected {
+  border-color: #c4b5fd;
+
+  background: #f5f3ff;
+
+  color: #7c3aed;
+}
+
+.whizboard-pattern-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.whizboard-pattern-preview {
+  display: block;
+
+  flex: 0 0 auto;
+
+  width: 28px;
+  height: 24px;
+
+  overflow: hidden;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+
+  background-color: #ffffff;
+}
+
+.pattern-solid {
+  background-color: #a78bfa;
+}
+
+.pattern-hachure {
+  background-image: repeating-linear-gradient(
+    135deg,
+    #8b5cf6 0,
+    #8b5cf6 1px,
+    transparent 1px,
+    transparent 5px
+  );
+}
+
+.pattern-cross-hatch {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      #8b5cf6 0,
+      #8b5cf6 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      #8b5cf6 0,
+      #8b5cf6 1px,
+      transparent 1px,
+      transparent 5px
+    );
+}
+
+.pattern-zigzag {
+  background-image: repeating-linear-gradient(
+    135deg,
+    #8b5cf6 0,
+    #8b5cf6 2px,
+    transparent 2px,
+    transparent 7px
+  );
+}
+
+/* =========================================================
+   TOGGLE ROW
+   ========================================================= */
+
+.whizboard-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  width: 100%;
+
+  padding: 12px;
+
+  border: 1px solid #e8eaf2;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.whizboard-toggle-row:hover {
+  border-color: #d8b4fe;
+}
+
+.whizboard-toggle-row.enabled {
+  border-color: #d8b4fe;
+  background: #faf5ff;
+}
+
+.whizboard-toggle-row > span:first-child {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.whizboard-toggle-title {
+  color: #334155;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.whizboard-toggle-description {
+  color: #929bad;
+
+  font-size: 10px;
+}
+
+.whizboard-toggle {
+  display: flex;
+  align-items: center;
+
+  flex: 0 0 auto;
+
+  width: 34px;
+  height: 20px;
+
+  padding: 3px;
+
+  border-radius: 999px;
+
+  background: #cbd5e1;
+
+  transition: background 160ms ease;
+}
+
+.whizboard-toggle > span {
+  width: 14px;
+  height: 14px;
+
+  border-radius: 50%;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.15);
+
+  transition: transform 160ms ease;
+}
+
+.whizboard-toggle-row.enabled .whizboard-toggle {
+  background: #8b5cf6;
+}
+
+.whizboard-toggle-row.enabled .whizboard-toggle > span {
+  transform: translateX(14px);
+}
+
+/* =========================================================
+   TEXT ALIGNMENT
+   ========================================================= */
+
+.whizboard-alignment {
+  display: grid;
+
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  gap: 7px;
+}
+
+.whizboard-alignment button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 39px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.whizboard-alignment button:hover {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
+
+.whizboard-alignment button[aria-pressed="true"] {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+/* =========================================================
+   ARRANGEMENT GRID
+   ========================================================= */
+
+.whizboard-arrange-grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 9px;
+}
+
+.whizboard-arrange-grid button {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  min-width: 0;
+
+  padding: 11px 9px;
+
+  border: 1px solid #e7eaf2;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  color: #8b5cf6;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.whizboard-arrange-grid button:hover {
+  transform: translateY(-1px);
+
+  border-color: #d8b4fe;
+
+  background: #faf5ff;
+}
+
+.whizboard-arrange-grid button > svg {
+  flex: 0 0 auto;
+}
+
+.whizboard-arrange-grid button > span {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  min-width: 0;
+}
+
+.whizboard-arrange-grid button strong {
+  color: #334155;
+
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.whizboard-arrange-grid button small {
+  color: #929bad;
+
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+/* =========================================================
+   ACTION BUTTONS
+   ========================================================= */
+
+.whizboard-primary-button,
+.whizboard-secondary-button,
+.whizboard-danger-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  width: 100%;
+
+  min-height: 38px;
+
+  padding: 9px 12px;
+
+  border: 1px solid transparent;
+  border-radius: 10px;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.whizboard-primary-button {
+  border-color: #c4b5fd;
+
+  background: linear-gradient(
+    135deg,
+    #8b5cf6,
+    #6366f1
+  );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 10px rgba(124, 58, 237, 0.15);
+}
+
+.whizboard-primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+
+  background: linear-gradient(
+    135deg,
+    #7c3aed,
+    #4f46e5
+  );
+}
+
+.whizboard-primary-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.whizboard-secondary-button {
+  border-color: #e2e8f0;
+
+  background: #ffffff;
+
+  color: #64748b;
+}
+
+.whizboard-secondary-button:hover {
+  border-color: #c4b5fd;
+
+  background: #faf5ff;
+
+  color: #7c3aed;
+}
+
+.whizboard-danger-button {
+  border-color: #fecdd3;
+
+  background: #fff7f7;
+
+  color: #e11d48;
+}
+
+.whizboard-danger-button:hover {
+  border-color: #fda4af;
+
+  background: #fff1f2;
+}
+
+/* =========================================================
+   EMPTY TEXT STATE
+   ========================================================= */
+
+.whizboard-empty-state {
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+
+  padding: 35px 15px;
+
+  text-align: center;
+}
+
+.whizboard-empty-state > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 56px;
+  height: 56px;
+
+  margin-bottom: 15px;
+
+  border-radius: 18px;
+
+  background: #f3e8ff;
+
+  color: #8b5cf6;
+}
+
+.whizboard-empty-state h4 {
+  margin: 0;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.whizboard-empty-state p {
+  max-width: 230px;
+
+  margin: 8px 0 18px;
+
+  color: #8993a7;
+
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.whizboard-empty-state button {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 9px 13px;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 10px;
+
+  background: #faf5ff;
+
+  color: #7c3aed;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+/* =========================================================
+   PANEL FOOTER
+   ========================================================= */
+
+.whizboard-properties-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  flex: 0 0 auto;
+
+  padding: 11px 15px;
+
+  border-top: 1px solid #f0edf8;
+
+  background: #fcfbff;
+}
+
+.whizboard-properties-footer > span {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #8993a7;
+
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.whizboard-status-dot {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.whizboard-properties-footer button {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  padding: 5px 8px;
+
+  border: 1px solid #e9d5ff;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #8b5cf6;
+
+  font-size: 10px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 850px) {
+  .whizboard-properties {
+    width: 325px;
+  }
+
+  .whizboard-property-content {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .whizboard-section {
+    padding: 12px 0;
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
   .whizboard-toolbar {
-    left: 12px;
+    left: 8px;
 
     width: 46px;
 
@@ -269,6 +1716,11 @@
     border-radius: 15px;
   }
 
+  .whizboard-toolbar-brand {
+    width: 32px;
+    height: 32px;
+  }
+
   .whizboard-tool-button {
     width: 36px;
     height: 36px;
@@ -276,20 +1728,100 @@
     border-radius: 10px;
   }
 
-  .whizboard-tool-button svg {
-    width: 20px;
-    height: 20px;
+  .whizboard-properties {
+    top: auto;
+
+    left: 62px;
+    right: 8px;
+    bottom: 8px;
+
+    width: auto;
+    max-width: none;
+
+    max-height: 62%;
+
+    border-radius: 17px;
+  }
+
+  .whizboard-properties-header {
+    padding: 12px;
+  }
+
+  .whizboard-properties-icon {
+    width: 35px;
+    height: 35px;
+  }
+
+  .whizboard-quick-colors {
+    padding: 9px 12px;
+  }
+
+  .whizboard-property-tabs {
+    padding: 6px 8px;
+  }
+
+  .whizboard-property-tabs button {
+    padding: 7px 2px;
+
+    font-size: 9px;
+  }
+
+  .whizboard-property-content {
+    padding: 0 12px 10px;
+  }
+
+  .whizboard-color-grid {
+    gap: 6px;
+  }
+
+  .whizboard-section-title h4 {
+    font-size: 11px;
   }
 }
 
-/* ==================================================
+/* =========================================================
+   VERY SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 360px) {
+  .whizboard-properties {
+    left: 57px;
+    right: 5px;
+
+    max-height: 60%;
+  }
+
+  .whizboard-properties-title h3 {
+    font-size: 13px;
+  }
+
+  .whizboard-properties-title p {
+    font-size: 10px;
+  }
+
+  .whizboard-property-tabs button {
+    gap: 4px;
+    font-size: 8px;
+  }
+
+  .whizboard-arrange-grid {
+    gap: 6px;
+  }
+
+  .whizboard-arrange-grid button {
+    gap: 6px;
+    padding: 9px 7px;
+  }
+}
+
+/* =========================================================
    SHORT VIEWPORTS
-   ================================================== */
+   ========================================================= */
 
 @media (max-height: 480px) {
   .whizboard-toolbar {
-    top: 10px;
-    bottom: 10px;
+    top: 8px;
+    bottom: 8px;
 
     transform: none;
 
@@ -301,5 +1833,26 @@
   .whizboard-tool-button {
     width: 33px;
     height: 33px;
+  }
+
+  .whizboard-properties {
+    top: 8px;
+    bottom: 8px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .whizboard-tool-button,
+  .whizboard-tool-button svg,
+  .whizboard-color-swatch,
+  .whizboard-quick-swatch,
+  .whizboard-close-button,
+  .whizboard-pattern-option,
+  .whizboard-arrange-grid button {
+    transition: none;
   }
 }

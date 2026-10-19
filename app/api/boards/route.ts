@@ -1,4 +1,8 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import {
+  auth,
+  currentUser,
+} from "@clerk/nextjs/server";
+
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
@@ -6,7 +10,7 @@ import { NextResponse } from "next/server";
 import { db, users, boards } from "@/db";
 
 // ==================================================
-// HELPER: JSON ERROR RESPONSE
+// JSON RESPONSE HELPERS
 // ==================================================
 
 function jsonError(message: string, status: number) {
@@ -15,12 +19,17 @@ function jsonError(message: string, status: number) {
       success: false,
       error: message,
     },
-    { status }
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
   );
 }
 
 // ==================================================
-// HELPER: GET AUTHENTICATED USER EMAIL
+// GET AUTHENTICATED USER
 // ==================================================
 
 async function getAuthenticatedEmail() {
@@ -29,31 +38,51 @@ async function getAuthenticatedEmail() {
   if (!userId) {
     return {
       email: null,
-      error: jsonError("Please sign in to continue.", 401),
+      user: null,
+      error: jsonError(
+        "Your session is missing or expired. Please sign in again.",
+        401
+      ),
     };
   }
 
   const user = await currentUser();
 
-  const email = user?.primaryEmailAddress?.emailAddress;
+  if (!user) {
+    return {
+      email: null,
+      user: null,
+      error: jsonError(
+        "Unable to retrieve your Clerk account. Please sign in again.",
+        401
+      ),
+    };
+  }
+
+  const email =
+    user.primaryEmailAddress?.emailAddress;
 
   if (!email) {
     return {
       email: null,
-      error: jsonError("User email address not found.", 400),
+      user: null,
+      error: jsonError(
+        "Your Clerk account does not have a primary email address.",
+        400
+      ),
     };
   }
 
   return {
     email,
-    error: null,
     user,
+    error: null,
   };
 }
 
 // ==================================================
-// GET: FETCH BOARDS FOR THE SIGNED-IN USER
 // GET /api/boards
+// FETCH BOARDS FOR THE SIGNED-IN USER
 // ==================================================
 
 export async function GET() {
@@ -67,33 +96,48 @@ export async function GET() {
     const userBoards = await db
       .select()
       .from(boards)
-      .where(eq(boards.userEmail, result.email))
-      .orderBy(desc(boards.createdAt));
+      .where(
+        eq(boards.userEmail, result.email)
+      )
+      .orderBy(
+        desc(boards.createdAt)
+      );
 
     return NextResponse.json(
       {
         success: true,
         boards: userBoards,
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (error) {
-    console.error("GET /api/boards failed:", error);
+    console.error(
+      "GET /api/boards failed:",
+      error
+    );
 
-    return jsonError("Failed to retrieve boards.", 500);
+    return jsonError(
+      "Failed to retrieve boards.",
+      500
+    );
   }
 }
 
 // ==================================================
-// POST: CREATE A BOARD
 // POST /api/boards
+// CREATE A NEW BOARD
 // ==================================================
 
 export async function POST(request: Request) {
   try {
     const result = await getAuthenticatedEmail();
 
-    if (!result.email) {
+    if (!result.email || !result.user) {
       return result.error!;
     }
 
@@ -103,7 +147,10 @@ export async function POST(request: Request) {
     await db
       .insert(users)
       .values({
-        name: user?.fullName || user?.firstName || "User",
+        name:
+          user.fullName ||
+          user.firstName ||
+          "User",
         email,
       })
       .onConflictDoNothing({
@@ -116,7 +163,10 @@ export async function POST(request: Request) {
     try {
       body = await request.json();
     } catch {
-      return jsonError("Invalid request body.", 400);
+      return jsonError(
+        "Invalid JSON request body.",
+        400
+      );
     }
 
     if (
@@ -124,10 +174,14 @@ export async function POST(request: Request) {
       body === null ||
       Array.isArray(body)
     ) {
-      return jsonError("Invalid request data.", 400);
+      return jsonError(
+        "Invalid request data.",
+        400
+      );
     }
 
-    const payload = body as Record<string, unknown>;
+    const payload =
+      body as Record<string, unknown>;
 
     const projectName =
       typeof payload.projectName === "string"
@@ -139,9 +193,12 @@ export async function POST(request: Request) {
         ? payload.description.trim()
         : "";
 
-    // Validate the project name.
+    // Validate the board name.
     if (!projectName) {
-      return jsonError("Please enter a board name.", 400);
+      return jsonError(
+        "Please enter a board name.",
+        400
+      );
     }
 
     if (projectName.length > 255) {
@@ -158,9 +215,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Save the board to Neon PostgreSQL.
+    // Generate a unique board ID.
     const projectId = randomUUID();
 
+    // Save the board in Neon PostgreSQL.
     const [newBoard] = await db
       .insert(boards)
       .values({
@@ -172,7 +230,10 @@ export async function POST(request: Request) {
       .returning();
 
     if (!newBoard) {
-      return jsonError("The board could not be saved.", 500);
+      return jsonError(
+        "The board could not be saved.",
+        500
+      );
     }
 
     return NextResponse.json(
@@ -181,10 +242,18 @@ export async function POST(request: Request) {
         message: "Board created successfully.",
         board: newBoard,
       },
-      { status: 201 }
+      {
+        status: 201,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (error) {
-    console.error("POST /api/boards failed:", error);
+    console.error(
+      "POST /api/boards failed:",
+      error
+    );
 
     return jsonError(
       "Failed to save your board. Please try again.",

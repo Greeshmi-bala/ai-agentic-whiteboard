@@ -1,15 +1,44 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import {
+  clerkMiddleware,
+  createRouteMatcher,
+} from "@clerk/nextjs/server";
+
+// ==================================================
+// PROTECTED ROUTES
+// ==================================================
 
 const isProtectedRoute = createRouteMatcher([
-  "/dashboard/:path*",
-  "/dashboard",
+  "/dashboard(.*)",
+  "/workspace(.*)",
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
+// ==================================================
+// CLERK MIDDLEWARE
+// ==================================================
+
+export default clerkMiddleware(async (auth, request) => {
+  const pathname = request.nextUrl.pathname;
+
+  // Protect dashboard and workspace pages.
+  if (isProtectedRoute(request)) {
     await auth.protect();
   }
+
+  // API authentication is checked separately inside
+  // each API route. Do not bypass those checks here.
+  if (
+    pathname.startsWith("/api/boards") &&
+    process.env.NODE_ENV === "development"
+  ) {
+    console.debug(
+      `[Clerk middleware] ${request.method} ${pathname}`
+    );
+  }
 });
+
+// ==================================================
+// NEXT.JS 16 PROXY CONFIGURATION
+// ==================================================
 
 export const config = {
   matcher: [

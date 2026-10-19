@@ -1,54 +1,137 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
 import axios from "axios";
+
 import { useAuth } from "@clerk/nextjs";
+
 import { UserDetailContext } from "./context/UserDetailContext";
+
+// ==================================================
+// TYPES
+// ==================================================
 
 interface UserDetail {
   [key: string]: unknown;
 }
 
-function Provider({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
+// ==================================================
+// PROVIDER
+// ==================================================
 
-  const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
+function Provider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const {
+    isLoaded,
+    isSignedIn,
+    userId,
+  } = useAuth();
+
+  const [
+    userDetail,
+    setUserDetail,
+  ] = useState<UserDetail | null>(null);
+
+  // ==================================================
+  // CREATE OR FETCH THE APPLICATION USER
+  // ==================================================
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
+    // Wait until Clerk has finished initializing.
+    if (!isLoaded) {
       return;
     }
 
-    let isMounted = true;
+    // Clear application user state after sign-out.
+    if (!isSignedIn || !userId) {
+      setUserDetail(null);
+      return;
+    }
 
-    const createNewUser = async () => {
-      try {
-        const result = await axios.post("/api/users");
+    let cancelled = false;
 
-        if (isMounted) {
-          console.log("User data:", result.data);
-          setUserDetail(result.data);
+    const createOrFetchUser =
+      async () => {
+        try {
+          const response = await axios.post(
+            "/api/users",
+            undefined,
+            {
+              headers: {
+                Accept: "application/json",
+              },
+              withCredentials: true,
+            }
+          );
+
+          if (cancelled) {
+            return;
+          }
+
+          setUserDetail(response.data);
+
+          if (
+            process.env.NODE_ENV ===
+            "development"
+          ) {
+            console.debug(
+              "[Provider] Application user loaded."
+            );
+          }
+        } catch (error: unknown) {
+          if (cancelled) {
+            return;
+          }
+
+          if (axios.isAxiosError(error)) {
+            console.error(
+              "[Provider] Failed to initialize application user.",
+              {
+                status:
+                  error.response?.status,
+                message: error.message,
+                response:
+                  error.response?.data,
+              }
+            );
+          } else {
+            console.error(
+              "[Provider] Unexpected user initialization error:",
+              error
+            );
+          }
         }
-      } catch (error: unknown) {
-        if (axios.isAxiosError(error)) {
-          console.error("API status:", error.response?.status);
-          console.error("API response:", error.response?.data);
-          console.error("API message:", error.message);
-        } else {
-          console.error("Unexpected error:", error);
-        }
-      }
-    };
+      };
 
-    void createNewUser();
+    void createOrFetchUser();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
-  }, [isLoaded, isSignedIn]);
+  }, [
+    isLoaded,
+    isSignedIn,
+    userId,
+  ]);
+
+  // ==================================================
+  // CONTEXT
+  // ==================================================
 
   return (
-    <UserDetailContext.Provider value={{ userDetail, setUserDetail }}>
+    <UserDetailContext.Provider
+      value={{
+        userDetail,
+        setUserDetail,
+      }}
+    >
       {children}
     </UserDetailContext.Provider>
   );
