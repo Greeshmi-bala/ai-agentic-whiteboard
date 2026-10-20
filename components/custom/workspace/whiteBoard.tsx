@@ -63,6 +63,8 @@ import {
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 import AIFloatingSidebar from "./AIFloatingSidebar";
+import WhiteboardBottomToolbar from "./WhiteboardBottomToolbar";
+import "./whiteboard-bottom-toolbar.css";
 
 // ======================================================
 // TYPES
@@ -1378,6 +1380,168 @@ const ExcalidrawEditor = dynamic(
       );
 
             // ================================================
+      // NOTES, EMOJIS AND SYMBOL ICONS
+      // These are native Excalidraw elements, so the existing
+      // scene persistence/autosave flow stores them automatically.
+      // ================================================
+
+      const insertCanvasText = useCallback(
+        (text: string, options?: { color?: string; fontSize?: number }) => {
+          const api = apiRef.current;
+          if (!api) return;
+
+          const appState = api.getAppState() as any;
+          const sceneElements = api.getSceneElements() as any[];
+          const scrollX = Number(appState.scrollX ?? 0);
+          const scrollY = Number(appState.scrollY ?? 0);
+          const zoom = Number(appState.zoom?.value ?? 1);
+          const viewportWidth = (appState.width ?? 1000) / zoom;
+          const viewportHeight = (appState.height ?? 700) / zoom;
+          const x = Math.max(24, -scrollX + viewportWidth / 2 - 80);
+          const y = Math.max(24, -scrollY + viewportHeight / 2 - 36);
+          const fontSize = options?.fontSize ?? 48;
+          const width = Math.max(fontSize * 1.8, text.length * fontSize * 0.9);
+          const height = Math.max(fontSize * 1.5, fontSize + 16);
+          const id = createElementId();
+          const element: Record<string, any> = {
+            id,
+            type: "text",
+            x,
+            y,
+            width,
+            height,
+            angle: 0,
+            strokeColor: options?.color ?? "#7C3AED",
+            backgroundColor: "transparent",
+            fillStyle: "solid",
+            strokeWidth: 1,
+            strokeStyle: "solid",
+            roughness: 0,
+            opacity: 100,
+            groupIds: [],
+            frameId: null,
+            roundness: null,
+            seed: Math.floor(Math.random() * 2_147_483_647),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 2_147_483_647),
+            isDeleted: false,
+            boundElements: null,
+            updated: Date.now(),
+            link: null,
+            locked: false,
+            text,
+            originalText: text,
+            fontSize,
+            fontFamily: 2,
+            textAlign: "center",
+            verticalAlign: "middle",
+            baseline: fontSize,
+            containerId: null,
+            lineHeight: 1.25,
+          };
+
+          api.updateScene({
+            elements: [...sceneElements, element] as any,
+            appState: { selectedElementIds: { [id]: true } } as any,
+          });
+          setSelectedElements([element as ElementLike]);
+          activateTool("selection");
+        },
+        [activateTool]
+      );
+
+      const insertStickyNote = useCallback(
+        (color: string) => {
+          const api = apiRef.current;
+          if (!api) return;
+
+          const appState = api.getAppState() as any;
+          const zoom = Number(appState.zoom?.value ?? 1);
+          const viewportWidth = (appState.width ?? 1000) / zoom;
+          const viewportHeight = (appState.height ?? 700) / zoom;
+          const x = Math.max(24, -(appState.scrollX ?? 0) + viewportWidth / 2 - 115);
+          const y = Math.max(24, -(appState.scrollY ?? 0) + viewportHeight / 2 - 75);
+          const noteId = createElementId();
+          const textId = createElementId();
+          const now = Date.now();
+          const seed = () => Math.floor(Math.random() * 2_147_483_647);
+
+          const note: Record<string, any> = {
+            id: noteId,
+            type: "rectangle",
+            x, y, width: 230, height: 150,
+            angle: 0,
+            strokeColor: color === "#FEF08A" ? "#EAB308" : color,
+            backgroundColor: color,
+            fillStyle: "solid",
+            strokeWidth: 1,
+            strokeStyle: "solid",
+            roughness: 0,
+            opacity: 100,
+            groupIds: [],
+            frameId: null,
+            roundness: { type: 3 },
+            seed: seed(),
+            version: 1,
+            versionNonce: seed(),
+            isDeleted: false,
+            boundElements: [{ id: textId, type: "text" }],
+            updated: now,
+            link: null,
+            locked: false,
+            customData: { whizboardType: "sticky-note" },
+          };
+
+          const noteText = "Double-click to write...";
+          const textElement: Record<string, any> = {
+            id: textId,
+            type: "text",
+            x: x + 14,
+            y: y + 16,
+            width: 202,
+            height: 118,
+            angle: 0,
+            strokeColor: "#334155",
+            backgroundColor: "transparent",
+            fillStyle: "solid",
+            strokeWidth: 1,
+            strokeStyle: "solid",
+            roughness: 0,
+            opacity: 100,
+            groupIds: [],
+            frameId: null,
+            roundness: null,
+            seed: seed(),
+            version: 1,
+            versionNonce: seed(),
+            isDeleted: false,
+            boundElements: null,
+            updated: now,
+            link: null,
+            locked: false,
+            text: noteText,
+            originalText: noteText,
+            fontSize: 18,
+            fontFamily: 2,
+            textAlign: "left",
+            verticalAlign: "top",
+            baseline: 18,
+            containerId: noteId,
+            lineHeight: 1.25,
+            customData: { whizboardType: "sticky-note-text" },
+          };
+
+          api.updateScene({
+            elements: [...(api.getSceneElements() as any[]), note, textElement] as any,
+            appState: { selectedElementIds: { [noteId]: true, [textId]: true } } as any,
+          });
+          setSelectedElements([note, textElement] as ElementLike[]);
+          activateTool("selection");
+        },
+        [activateTool]
+      );
+
+      // ================================================
       // KEYBOARD SHORTCUTS
       // ================================================
 
@@ -2907,6 +3071,14 @@ const ExcalidrawEditor = dynamic(
               </div>
             </aside>
           )}
+
+          {/* Bottom-center creation tools: sticky notes, full emoji picker, and symbols. */}
+          <WhiteboardBottomToolbar
+            onInsertNote={insertStickyNote}
+            onInsertEmoji={(emoji) => insertCanvasText(emoji, { fontSize: 48, color: "#7C3AED" })}
+            onInsertIcon={(symbol, color) => insertCanvasText(symbol, { fontSize: 58, color })}
+            disabled={!ready}
+          />
 
           {/* Gemini AI generates a structured diagram and adds it to the current Excalidraw scene. */}
           <AIFloatingSidebar onGenerate={handleAIGenerate} />
